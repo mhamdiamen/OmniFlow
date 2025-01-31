@@ -14,11 +14,11 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as auth from "../auth.js";
-import type * as chapters from "../chapters.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as lib_permissions from "../lib/permissions.js";
-import type * as stories from "../stories.js";
+import type * as mutations_company from "../mutations/company.js";
+import type * as queries_company from "../queries/company.js";
 import type * as users from "../users.js";
 
 /**
@@ -31,11 +31,11 @@ import type * as users from "../users.js";
  */
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
-  chapters: typeof chapters;
   files: typeof files;
   http: typeof http;
   "lib/permissions": typeof lib_permissions;
-  stories: typeof stories;
+  "mutations/company": typeof mutations_company;
+  "queries/company": typeof queries_company;
   users: typeof users;
 }>;
 export declare const api: FilterApi<
