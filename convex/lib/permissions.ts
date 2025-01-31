@@ -12,9 +12,15 @@ export async function checkPermission(
     const user = await ctx.db.get(userId);
     if (!user || !user.companyId || !user.roleId) return false;
 
-    // Fetch the role from the database (ensure the correct type)
+    // Fetch the role and its permissions
     const role = await ctx.db.get(user.roleId as Id<"roles">);
-    if (!role || !role.permissions.includes(permission)) return false;
+    if (!role) return false;
 
-    return true;
+    // Fetch permissions by IDs
+    const permissions = await Promise.all(
+        role.permissions.map((permissionId) => ctx.db.get(permissionId as Id<"permissions">))
+    );
+
+    // Check if the permission name matches
+    return permissions.some((p) => p && p.name === permission);
 }

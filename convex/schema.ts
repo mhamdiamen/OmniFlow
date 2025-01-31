@@ -45,12 +45,17 @@ const schema = defineSchema({
   roles: defineTable({
     companyId: v.optional(v.string()),
     name: v.string(),
-    permissions: v.array(v.string()),
-  }).index("companyId", ["companyId"]),
+    description: v.optional(v.string()), // New field for UI display
+    permissions: v.array(v.id("permissions")), // References to permission IDs
+  })
+    .index("companyId", ["companyId"]) // Fetch roles per company
+    .index("name", ["name"]), // Search by role name
 
   permissions: defineTable({
     name: v.string(),
     description: v.optional(v.string()),
+    assignedRoles: v.array(v.id("roles")), // Add this field
+
   }),
 });
 

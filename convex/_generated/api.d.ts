@@ -18,7 +18,11 @@ import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as lib_permissions from "../lib/permissions.js";
 import type * as mutations_company from "../mutations/company.js";
+import type * as mutations_permissions from "../mutations/permissions.js";
+import type * as mutations_roles from "../mutations/roles.js";
 import type * as queries_company from "../queries/company.js";
+import type * as queries_permissions from "../queries/permissions.js";
+import type * as queries_roles from "../queries/roles.js";
 import type * as users from "../users.js";
 
 /**
@@ -35,7 +39,11 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "lib/permissions": typeof lib_permissions;
   "mutations/company": typeof mutations_company;
+  "mutations/permissions": typeof mutations_permissions;
+  "mutations/roles": typeof mutations_roles;
   "queries/company": typeof queries_company;
+  "queries/permissions": typeof queries_permissions;
+  "queries/roles": typeof queries_roles;
   users: typeof users;
 }>;
 export declare const api: FilterApi<
