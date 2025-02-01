@@ -2,53 +2,87 @@
 
 import AdminPanelLayout from "@/components/admin-panel/admin-panel-layout";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
-import { Card } from "@/components/ui/card";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { RolesTable } from "@/components/RoleManagement/RolesTable";
 import { AddRole } from "@/components/RoleManagement/CRUD/AddRole";
 import { AddPermission } from "@/components/PermissionsManagement/CRUD/AddPermission";
 import { PermissionsTable } from "@/components/PermissionsManagement/PermissionsTable";
+import { Skeleton } from "@/components/ui/skeleton"; // Assuming you have a Skeleton component
+import { Spinner } from "@/components/ui/spinner";
 
 export default function Test() {
+    // Fetch raw roles and permissions data
     const rawRoles = useQuery(api.queries.roles.getRoles);
     const rawPermissions = useQuery(api.queries.permissions.fetchAllPermissions);
 
-    console.log("Raw Permissions:", rawPermissions); // Debugging: Check fetched data
+    // Transform _creationTime into createdAt for roles
+    const roles = rawRoles?.map(role => {
+        const createdAt = new Date(role._creationTime).toISOString();
+        return {
+            ...role,
+            createdAt,
+        };
+    }) || [];
 
-    // Transform _creationTime into createdAt
-    const roles = rawRoles?.map(role => ({
-        ...role,
-        createdAt: new Date(role._creationTime).toISOString(),
-    })) || [];
+    // Transform _creationTime into createdAt for permissions
+    const permissions = rawPermissions?.map(permission => {
+        const createdAt = new Date(permission._creationTime).toISOString();
+        return {
+            ...permission,
+            createdAt,
+            assignedRoles: permission.assignedRoles || [], // Ensure assignedRoles is included
+        };
+    }) || [];
 
-    const permissions = rawPermissions?.map(permission => ({
-        ...permission,
-        createdAt: new Date(permission._creationTime).toISOString(),
-        assignedRoles: permission.assignedRoles || [], // Ensure assignedRoles is included
-    })) || [];
-
-    console.log("Transformed Permissions:", permissions); // Debugging: Check transformed data
+    // Loading state
+    const isLoading = !rawRoles || !rawPermissions;
 
     return (
         <AdminPanelLayout>
             <ContentLayout title="Dashboard">
-         
-                {/* Add Role Component */}
-                <AddRole />
-
-                {/* Roles Table */}
+                {/* Roles Section */}
                 <div className="mt-6">
-                    {rawRoles ? <RolesTable roles={roles} /> : <p>Loading roles...</p>}
+                    <div className="flex items-center justify-between mb-4">
+                        <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
+                            Role Management
+                        </h1>
+                        <AddRole />
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                        Manage and oversee user roles within the system. Roles define access levels and permissions for different users.
+                    </p>
+                    {isLoading ? (
+                        <Skeleton className="h-[300px] w-full" />
+                    ) : (
+                        <RolesTable roles={roles} />
+                    )}
                 </div>
 
-                {/* Add Permission Component */}
-                <AddPermission />
-
-                {/* Permissions Table */}
+                {/* Permissions Section */}
                 <div className="mt-6">
-                    {rawPermissions ? <PermissionsTable permissions={permissions} /> : <p>Loading permissions...</p>}
+                    <div className="flex items-center justify-between mb-4">
+                        <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
+                            Permission Management
+                        </h1>
+                        <AddPermission />
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                        Define and manage permissions that can be assigned to roles. Permissions control access to specific features and resources.
+                    </p>
+                    {isLoading ? (
+                        <Skeleton className="h-[300px] w-full" />
+                    ) : (
+                        <PermissionsTable permissions={permissions} />
+                    )}
                 </div>
+
+                {/* Loading Spinner */}
+                {isLoading && (
+                    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+                        <Spinner size="sm" className="bg-black dark:bg-white" />
+                    </div>
+                )}
             </ContentLayout>
         </AdminPanelLayout>
     );

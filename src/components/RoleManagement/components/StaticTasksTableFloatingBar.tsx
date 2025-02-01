@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Portal } from "../../ui/portal";
 import BulkDeleteDialog from "../CRUD/BulkDeleteDialog";
+import { Id } from "../../../../convex/_generated/dataModel";
 
 type StaticTasksTableFloatingBarProps = {
     table: any; // The React Table instance
@@ -84,48 +85,9 @@ export function StaticTasksTableFloatingBar({
                                         <p>Update status</p>
                                     </TooltipContent>
                                 </Tooltip>
-                              {/*   <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant="secondary"
-                                            size="icon"
-                                            className="size-7 border"
-                                            disabled={isPending}
-                                        >
-                                            {isPending ? (
-                                                <Loader className="size-3.5 animate-spin" aria-hidden="true" />
-                                            ) : (
-                                                <ArrowUp className="size-3.5" aria-hidden="true" />
-                                            )}
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Update priority</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant="secondary"
-                                            size="icon"
-                                            className="size-7 border"
-                                            disabled={isPending}
-                                        >
-                                            {isPending ? (
-                                                <Loader className="size-3.5 animate-spin" aria-hidden="true" />
-                                            ) : (
-                                                <Download className="size-3.5" aria-hidden="true" />
-                                            )}
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Export tasks</p>
-                                    </TooltipContent>
-                                </Tooltip> */}
                                 {/* BulkDeleteDialog */}
                                 <BulkDeleteDialog
                                     triggerText={
-
                                         <Button
                                             variant="secondary"
                                             size="icon"
@@ -134,15 +96,13 @@ export function StaticTasksTableFloatingBar({
                                         >
                                             <Trash2 className="size-3.5" aria-hidden="true" />
                                         </Button>
-
                                     }
-                                    title="Delete Selected Stories"
-                                    description="Are you sure you want to delete the selected stories? This action cannot be undone."
-                                    selectedStoryIds={selectedRowIds}
+                                    title="Delete Selected Roles"
+                                    description="Are you sure you want to delete the selected roles? This action cannot be undone."
+                                    selectedRoleIds={selectedRowIds as Id<"roles">[]}
                                     confirmText="Confirm Delete"
                                     onSuccess={handleClearSelection}
                                 />
-
                             </div>
                         </div>
                     </div>

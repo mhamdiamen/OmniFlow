@@ -21,7 +21,7 @@ interface BulkDeleteDialogProps {
     triggerText: React.ReactNode; // ReactNode for flexible trigger styling
     title: string; // Title of the dialog
     description: React.ReactNode; // Allow JSX elements in description
-    selectedStoryIds: Id<"stories">[]; // Array of selected story IDs to delete
+    selectedRoleIds: Id<"roles">[]; // Array of selected role IDs to delete
     cancelText?: string; // Custom text for the cancel button (optional)
     confirmText?: string; // Custom text for the confirm button (optional)
     onSuccess?: () => void; // Callback on successful deletion (optional)
@@ -31,34 +31,30 @@ export default function BulkDeleteDialog({
     triggerText,
     title,
     description,
-    selectedStoryIds,
+    selectedRoleIds,
     cancelText = "Cancel",
     confirmText = "Delete",
     onSuccess,
 }: BulkDeleteDialogProps) {
     const [isDeleting, setIsDeleting] = useState(false);
-    const removeStories = useMutation(api.stories.removeStories);
+    const bulkRemoveRoles = useMutation(api.mutations.roles.bulkRemoveRoles);
 
     const handleConfirm = async () => {
         console.log("Confirm button clicked"); // Log here
-        if (isDeleting || selectedStoryIds.length === 0) return;
+        if (isDeleting || selectedRoleIds.length === 0) return;
 
-        console.log("Selected Story IDs:", selectedStoryIds); // Log the IDs being passed
+        console.log("Selected Role IDs:", selectedRoleIds); // Log the IDs being passed
 
         setIsDeleting(true);
 
         try {
-            const response = await removeStories({ ids: selectedStoryIds });
-            console.log("Response from removeStories:", response); // Log the response from the API
+            const deletedRoleIds = await bulkRemoveRoles({ roleIds: selectedRoleIds });
+            console.log("Response from bulkRemoveRoles:", deletedRoleIds); // Log the response from the API
 
-            if (response.success) {
-                toast.success(`${response.deletedCount} stories deleted successfully.`); // Show success notification
-                onSuccess?.();
-            } else {
-                toast.error("Failed to delete some or all stories. Please try again."); // Show error notification
-            }
+            toast.success(`${deletedRoleIds.length} roles deleted successfully.`); // Show success notification
+            onSuccess?.();
         } catch (error) {
-            console.error("Error deleting stories:", error); // Log errors
+            console.error("Error deleting roles:", error); // Log errors
             toast.error("An unexpected error occurred. Please try again."); // Show error notification
         } finally {
             setIsDeleting(false);

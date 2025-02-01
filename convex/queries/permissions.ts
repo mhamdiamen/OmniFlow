@@ -30,3 +30,24 @@ export const fetchPermissionsByIds = query({
         return permissions.filter((permission) => permission !== null); // Filter out nulls
     },
 });
+
+// Add this new query
+export const fetchPermissionById = query({
+    args: { id: v.id("permissions") }, // Single permission ID
+    handler: async (ctx, args) => {
+        const permission = await ctx.db.get(args.id);
+        if (!permission) return null;
+
+        // Fetch assigned roles
+        const roles = await Promise.all(
+            (permission.assignedRoles || []).map((roleId) => ctx.db.get(roleId))
+        );
+
+        return {
+            ...permission,
+            assignedRoles: roles
+                .filter((role) => role !== null) // Filter out nulls
+                .map((role) => role.name), // Extract role names
+        };
+    },
+});

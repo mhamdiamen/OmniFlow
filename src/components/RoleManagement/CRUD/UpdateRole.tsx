@@ -10,28 +10,38 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
-import { useMutation } from "convex/react";
+import { useState, useEffect } from "react";
+import { useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
-import { Plus, Loader2 } from "lucide-react";
+import { Edit, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { PermissionsSelector } from "../components/PermissionsSelector";
 
-export function AddRole() {
-  const createRole = useMutation(api.mutations.roles.createRole);
+interface UpdateRoleProps {
+  roleId: Id<"roles">; // ID of the role to update
+}
+
+export function UpdateRole({ roleId }: UpdateRoleProps) {
+  const role = useQuery(api.queries.roles.getRoleById, { id: roleId });
+  const updateRole = useMutation(api.mutations.roles.updateRole);
+
   const [isOpen, setIsOpen] = useState(false);
   const [roleName, setRoleName] = useState("");
   const [roleDescription, setRoleDescription] = useState("");
-  const [selectedPermissions, setSelectedPermissions] = useState<Id<"permissions">[]>([]); // Store selected permission IDs
+  const [selectedPermissions, setSelectedPermissions] = useState<Id<"permissions">[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
-  const resetForm = () => {
-    setRoleName("");
-    setRoleDescription("");
-    setSelectedPermissions([]);
-  };
+  // Populate form fields when role data is fetched
+  useEffect(() => {
+    if (role) {
+      setRoleName(role.name);
+      setRoleDescription(role.description || "");
+      // Set selectedPermissions to the role's permission IDs
+      setSelectedPermissions(role.permissions);
+    }
+  }, [role]);
 
   const handleSave = async () => {
     if (!roleName.trim()) {
@@ -46,18 +56,18 @@ export function AddRole() {
 
     try {
       setIsSaving(true);
-      await createRole({
+      await updateRole({
+        id: roleId,
         name: roleName.trim(),
         description: roleDescription || undefined,
-        permissions: selectedPermissions, // Pass selected permission IDs
+        permissions: selectedPermissions,
       });
 
-      toast.success("Role created successfully!");
-      resetForm();
+      toast.success("Role updated successfully!");
       setIsOpen(false);
     } catch (error) {
       console.error(error);
-      toast.error("Failed to create role. Please try again.");
+      toast.error("Failed to update role. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -74,17 +84,21 @@ export function AddRole() {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button onClick={() => setIsOpen(true)} size="sm">
-          <Plus size={16} strokeWidth={2} aria-hidden="true" />
-          <span>Add Role</span>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Edit Role"
+          onClick={() => setIsOpen(true)}
+        >
+          <Edit size={16} strokeWidth={2} aria-hidden="true" />
         </Button>
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-[600px] md:max-w-[800px] p-4 md:p-6 overflow-y-auto max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle className="text-lg font-bold">Add Role</DialogTitle>
+          <DialogTitle className="text-lg font-bold">Update Role</DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
-            Fill in the fields to create a new role with permissions.
+            Modify the fields below to update the role.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 md:gap-6">

@@ -22,11 +22,13 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
     triggerClassName,
     onDateRangeChange,
 }) => {
-    // This is where the hook is properly used
-    const [dateRangeState, setDateRangeState] = React.useState<{ from: Date | undefined; to: Date | undefined }>({
-        from: undefined,
-        to: undefined,
-    });
+    // Initialize internal state with the dateRange prop
+    const [dateRangeState, setDateRangeState] = React.useState<{ from: Date | undefined; to: Date | undefined }>(dateRange);
+
+    // Synchronize internal state with the dateRange prop
+    React.useEffect(() => {
+        setDateRangeState(dateRange);
+    }, [dateRange]);
 
     return (
         <div className="grid gap-2">
@@ -61,14 +63,12 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
                         selected={dateRangeState}
                         numberOfMonths={2}
                         onSelect={(range) => {
-                            setDateRangeState({
+                            const newRange = {
                                 from: range?.from ?? undefined,
                                 to: range?.to ?? undefined,
-                            });
-                            onDateRangeChange({
-                                from: range?.from ?? undefined,
-                                to: range?.to ?? undefined,
-                            });
+                            };
+                            setDateRangeState(newRange); // Update internal state
+                            onDateRangeChange(newRange); // Notify parent component
                         }}
                     />
                 </PopoverContent>

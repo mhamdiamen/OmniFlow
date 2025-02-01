@@ -38,6 +38,8 @@ import { EmptyState } from "./components/ReusableEmptyState";
 import { AddPermission } from "./CRUD/AddPermission";
 import { XCircle } from "lucide-react";
 import DateRangePicker from "./components/DateRangePicker";
+import { DataTableFacetedFilter } from "./datatable/DataTableFacetedFilter";
+import { UpdatePermission } from "./CRUD/UpdatePermission";
 
 export type Permission = {
     _id: string;
@@ -60,6 +62,26 @@ export function PermissionsTable({ permissions }: PermissionsTableProps) {
         from: undefined,
         to: undefined,
     });
+    const [selectedPermissionNames, setSelectedPermissionNames] = React.useState<Set<string>>(new Set());
+    // Extract unique permission names for filtering
+    const uniquePermissionNames = React.useMemo(() => {
+        const allPermissionNames = permissions.map((permission) => permission.name);
+        const uniquePermissionNames = Array.from(new Set(allPermissionNames)); // Remove duplicates
+        return uniquePermissionNames.map((name) => ({
+            value: name,
+            label: name,
+        }));
+    }, [permissions]);
+    // Filter permissions based on selected names
+    const filteredPermissions = React.useMemo(() => {
+        return permissions.filter((permission) => {
+            // If no permission names are selected, include all permissions
+            if (selectedPermissionNames.size === 0) return true;
+
+            // Check if the permission name is in the selected names
+            return selectedPermissionNames.has(permission.name);
+        });
+    }, [permissions, selectedPermissionNames]);
 
     const handleClearSelection = () => {
         setSelectedRows(new Set());
@@ -142,7 +164,7 @@ export function PermissionsTable({ permissions }: PermissionsTableProps) {
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger>
-                                        <Badge className="px-1 py-0.5 text-xs bg-gray-200">
+                                        <Badge className="px-1 py-0.5 text-xs ">
                                             +{remainingRoles.length} more
                                         </Badge>
                                     </TooltipTrigger>
@@ -166,7 +188,9 @@ export function PermissionsTable({ permissions }: PermissionsTableProps) {
             cell: ({ row }) => {
                 const permission = row.original;
                 return (
-                    <div className="flex justify-end">
+                    <div className="flex justify-end space-x-2">
+                        <UpdatePermission permissionId={permission._id as Id<"permissions">} />
+
                         <DeletePermissionDialog
                             triggerText="Delete"
                             title="Confirm Permission Deletion"
@@ -183,8 +207,9 @@ export function PermissionsTable({ permissions }: PermissionsTableProps) {
         },
     ];
 
+
     const table = useReactTable({
-        data: permissions,
+        data: filteredPermissions,
         columns,
         state: { sorting, columnFilters, columnVisibility },
         onSortingChange: setSorting,
@@ -215,14 +240,26 @@ export function PermissionsTable({ permissions }: PermissionsTableProps) {
                         onChange={(e) => table.getColumn("name")?.setFilterValue(e.target.value)}
                         className="w-full max-w-sm"
                     />
+                    <DataTableFacetedFilter
+                        title="Permissions"
+                        options={uniquePermissionNames}
+                        selectedValues={selectedPermissionNames}
+                        renderOption={(option) => (
+                            <div className="flex items-center space-x-2">
+                                <span>{option.label}</span>
+                            </div>
+                        )}
+                        onChange={setSelectedPermissionNames}
+                    />
+
 
                     {/* Reset Filters Button */}
-                    {table.getState().columnFilters.length > 0 && (
+                    {selectedPermissionNames.size > 0 && (
                         <Button
                             aria-label="Reset filters"
                             variant="ghost"
                             className="h-8 px-2 lg:px-3"
-                            onClick={() => table.resetColumnFilters()}
+                            onClick={() => setSelectedPermissionNames(new Set())}
                         >
                             Reset
                             <XCircle className="ml-2 size-4" aria-hidden="true" />

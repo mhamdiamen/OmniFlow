@@ -44,10 +44,10 @@ import { DataTablePagination } from "./datatable/DataTablePagination";
 import DeleteStoryDialog from "./CRUD/DeleteStoryDialog";
 import { Id } from "../../../convex/_generated/dataModel";
 import BulkDeleteDialog from "./CRUD/BulkDeleteDialog";
-import { UpdateStory } from "./CRUD/UpdateStory";
 import { EmptyState } from "./components/ReusableEmptyState";
 import DeleteRoleDialog from "./CRUD/DeleteStoryDialog";
 import { AddRole } from "./CRUD/AddRole";
+import { UpdateRole } from "./CRUD/UpdateRole";
 
 export type Role = {
     _id: string;
@@ -73,31 +73,38 @@ export function RolesTable({ roles }: RolesTableProps) {
         from: undefined,
         to: undefined,
     });
+    const [selectedPermissions, setSelectedPermissions] = React.useState<Set<string>>(new Set());
 
     // Determine if any filters are applied
-    const isFiltered = selectedStatus.size > 0 || selectedPrivacy.size > 0;
-
-    // Filter stories based on selected status and privacy
-    const filteredRoles = React.useMemo(() => {
-        return roles.filter(role => {
-            // Add any filtering logic here if needed
-            return true;
-        });
+    const isFiltered = selectedPermissions.size > 0;
+    // Extract unique permissions for filtering
+    const uniquePermissions = React.useMemo(() => {
+        const allPermissions = roles.flatMap((role) => role.permissions);
+        const uniquePermissions = Array.from(new Set(allPermissions)); // Remove duplicates
+        return uniquePermissions.map((permission) => ({
+            value: permission,
+            label: permission,
+        }));
     }, [roles]);
+    // Filter stories based on selected status and privacy
+    // Filter roles based on selected permissions
+    const filteredRoles = React.useMemo(() => {
+        return roles.filter((role) => {
+            // If no permissions are selected, include all roles
+            if (selectedPermissions.size === 0) return true;
+
+            // Check if the role has all selected permissions
+            return Array.from(selectedPermissions).every((permission) =>
+                role.permissions.includes(permission)
+            );
+        });
+    }, [roles, selectedPermissions]);
 
 
     const resetFilters = () => {
-        setSelectedStatus(new Set());
-        setSelectedPrivacy(new Set());
+        setSelectedPermissions(new Set());
     };
 
-    // Map of status to icons
-    const statusIcons = {
-        Ongoing: Clock,
-        Completed: CircleCheckBig,
-        Abandoned: CircleX,
-    };
-    // Dynamically generate options for privacy filter
 
 
 
@@ -192,7 +199,7 @@ export function RolesTable({ roles }: RolesTableProps) {
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger>
-                                        <Badge className="px-1 py-0.5 text-xs bg-gray-200">
+                                        <Badge className="px-1 py-0.5 text-xs ">
                                             +{remainingPermissions.length} more
                                         </Badge>
                                     </TooltipTrigger>
@@ -222,7 +229,7 @@ export function RolesTable({ roles }: RolesTableProps) {
                 const role = row.original as Role;
                 return (
                     <div className="flex justify-end">
-                        {/* <UpdateRole roleId={role._id as Id<"roles">} /> */}
+                        <UpdateRole roleId={role._id as Id<"roles">} />
                         <DeleteRoleDialog
                             triggerText="Delete"
                             title="Confirm Role Deletion"
@@ -273,34 +280,18 @@ export function RolesTable({ roles }: RolesTableProps) {
                     /> */}
 
                     {/* Status Filter Dropdown */}
-                    {/*    <DataTableFacetedFilter
-                        title="Status"
-                        options={dynamicOptions}
-                        selectedValues={selectedStatus} // Pass selected values
-                        renderOption={(option) => (
-                            <div className="flex items-center space-x-2">
-                                {option.icon && <option.icon className="w-4 h-4" />}
-                                <span>{option.label}</span>
-                                <span className="text-gray-500">({option.count})</span>
-                            </div>
-                        )}
-                        onChange={setSelectedStatus}
-                    /> */}
-
-                    {/* Privacy Filter Dropdown */}
-                    {/*   <DataTableFacetedFilter
-                        title="Privacy"
-                        options={privacyOptions}
-                        selectedValues={selectedPrivacy} // Pass selected values
+                    <DataTableFacetedFilter
+                        title="Permissions"
+                        options={uniquePermissions}
+                        selectedValues={selectedPermissions}
                         renderOption={(option) => (
                             <div className="flex items-center space-x-2">
                                 <span>{option.label}</span>
-                                <span className="text-gray-500">({option.count})</span>
                             </div>
                         )}
-                        onChange={setSelectedPrivacy}
+                        onChange={setSelectedPermissions}
                     />
- */}
+
                     {/* Reset Filters Button */}
                     {isFiltered && (
                         <Button
