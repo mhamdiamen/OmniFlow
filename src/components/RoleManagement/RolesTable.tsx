@@ -54,7 +54,7 @@ export type Role = {
     name: string;
     description?: string;
     permissions: string[];
-    companyId?: string;
+    companyId?: string[]; // Allow array of strings
     createdAt: string;
 };
 

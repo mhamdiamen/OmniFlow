@@ -14,7 +14,6 @@ const schema = defineSchema({
     phoneVerificationTime: v.optional(v.float64()),
     companyId: v.optional(v.string()),
     roleId: v.optional(v.string()),
-    createdAt: v.float64(),
     lastLogin: v.optional(v.float64()),
   })
     .index("email", ["email"])
@@ -24,7 +23,7 @@ const schema = defineSchema({
     name: v.string(),
     ownerId: v.string(),
     createdAt: v.float64(),
-    modules: v.array(v.string()),
+    modules: v.array(v.id("modules")), // <-- now correctly typed
     settings: v.optional(v.any()),
   }).index("ownerId", ["ownerId"]),
 
@@ -32,30 +31,31 @@ const schema = defineSchema({
     name: v.string(),
     description: v.optional(v.string()),
     isActiveByDefault: v.boolean(),
-    permissions: v.array(v.string()),
+    permissions: v.array(v.id("permissions")),
   }),
 
+  // Updated company_modules table:
   company_modules: defineTable({
-    companyId: v.string(),
-    moduleId: v.string(),
-    activatedBy: v.string(),
+    companyId: v.id("companies"),   // Now references the companies table.
+    moduleId: v.id("modules"),      // Already updated.
+    activatedBy: v.id("users"),     // Now references the users table.
     activatedAt: v.float64(),
   }).index("companyId", ["companyId", "moduleId"]),
 
   roles: defineTable({
-    companyId: v.optional(v.string()),
+    companyId: v.optional(v.array(v.string())),
     name: v.string(),
-    description: v.optional(v.string()), // New field for UI display
-    permissions: v.array(v.id("permissions")), // References to permission IDs
+    description: v.optional(v.string()),
+    permissions: v.array(v.id("permissions")),
   })
-    .index("companyId", ["companyId"]) // Fetch roles per company
-    .index("name", ["name"]), // Search by role name
+    .index("companyId", ["companyId"])
+    .index("name", ["name"]),
 
   permissions: defineTable({
     name: v.string(),
     description: v.optional(v.string()),
-    assignedRoles: v.array(v.id("roles")), // Add this field
-
+    assignedRoles: v.array(v.id("roles")),
+    assignedModules: v.array(v.id("modules")),
   }),
 });
 

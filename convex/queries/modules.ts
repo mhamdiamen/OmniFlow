@@ -1,0 +1,90 @@
+// src/server/modules.ts
+import { v } from "convex/values";
+import { query } from "../_generated/server";
+
+// 1. Fetch all modules along with the names of their assigned permissions.
+export const fetchAllModules = query(async (ctx) => {
+    const modules = await ctx.db.query("modules").collect();
+
+    return await Promise.all(
+        modules.map(async (module) => {
+            // For each module, fetch its permissions from the permissions table.
+            const permissions = await Promise.all(
+                (module.permissions || []).map((permissionId) => ctx.db.get(permissionId))
+            );
+            return {
+                ...module,
+                // Return only the permission names, filtering out any nulls.
+                permissions: permissions
+                    .filter((perm) => perm !== null)
+                    .map((perm) => perm.name),
+            };
+        })
+    );
+});
+
+// 2. Fetch a single module by its ID along with its assigned permission names.
+export const fetchModuleById = query({
+    args: { id: v.id("modules") },
+    handler: async (ctx, args) => {
+        const module = await ctx.db.get(args.id);
+        if (!module) return null;
+
+        const permissions = await Promise.all(
+            (module.permissions || []).map((permissionId) => ctx.db.get(permissionId))
+        );
+
+        return {
+            ...module,
+            permissions: permissions
+                .filter((perm) => perm !== null)
+                .map((perm) => perm.name),
+        };
+    },
+});
+export const fetchModuleByIdForUpdate = query({
+    args: { id: v.id("modules") },
+    handler: async (ctx, args) => {
+        const module = await ctx.db.get(args.id);
+        if (!module) return null;
+        // Return the module as-is (permissions remain an array of IDs)
+        return module;
+    },
+});
+
+// 3. Fetch modules by an array of module IDs.
+export const fetchModulesByIds = query({
+    args: { ids: v.array(v.id("modules")) },
+    handler: async (ctx, args) => {
+        const modules = await Promise.all(
+            args.ids.map((id) => ctx.db.get(id))
+        );
+        // Filter out any nulls (in case a module was deleted)
+        return modules.filter((module) => module !== null);
+    },
+});
+
+// 4. Fetch modules activated for a specific company.
+// This query uses the "company_modules" table to find which modules are activated for a given company,
+// then fetches the corresponding module records.
+export const fetchModulesForCompany = query({
+    args: { companyId: v.string() },
+    handler: async (ctx, args) => {
+        // Get all company_modules entries for this company.
+        const companyModuleRecords = await ctx.db
+            .query("company_modules")
+            .filter((q) => q.eq(q.field("companyId"), args.companyId))
+            .collect();
+
+        // Extract the module IDs from these records.
+        const moduleIds = companyModuleRecords.map((record) => record.moduleId);
+
+        // Fetch each module record.
+        const modules = await Promise.all(
+            moduleIds.map((moduleId) => ctx.db.get(moduleId))
+        );
+
+        // Optionally, you could also resolve each module's permissions as in the other queries.
+        return modules.filter((module) => module !== null);
+    },
+});

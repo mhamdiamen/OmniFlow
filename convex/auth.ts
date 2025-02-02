@@ -13,7 +13,6 @@ const CustomPassword = Password<DataModel>({
     return {
       email: params.email as string,
       name: params.name as string,
-      createdAt: Date.now(),
     };
   },
 });
@@ -26,7 +25,7 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
 
       let defaultRole = await ctx.db
         .query("roles")
-        .filter(q => q.eq(q.field("companyId"), undefined))
+        .filter(q => q.eq(q.field("name"), "Default"))
         .first();
 
       if (!defaultRole) {
@@ -42,6 +41,7 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
       if (defaultRole?._id) {
         await ctx.db.patch(args.userId, {
           roleId: defaultRole._id as Id<"roles">,
+
         });
       }
     }

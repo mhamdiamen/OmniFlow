@@ -46,6 +46,7 @@ export type Permission = {
     name: string;
     description?: string;
     assignedRoles: string[];
+    assignedModules: string[]; // New field for module names
     createdAt: string;
 };
 
@@ -178,6 +179,40 @@ export function PermissionsTable({ permissions }: PermissionsTableProps) {
                 );
             },
         },
+        {
+            accessorKey: "assignedModules",
+            header: ({ column }) => <DataTableColumnHeader column={column} title="Assigned Modules" />,
+            cell: ({ row }) => {
+                const modules = row.original.assignedModules || [];
+                const maxVisible = 2;
+                const visibleModules = modules.slice(0, maxVisible);
+                const remainingModules = modules.slice(maxVisible);
+                return (
+                    <div className="flex items-center gap-1 overflow-hidden whitespace-nowrap">
+                        {visibleModules.map((module, index) => (
+                            <Badge key={index} className="px-1 py-0.5 text-xs">
+                                {module}
+                            </Badge>
+                        ))}
+                        {remainingModules.length > 0 && (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger>
+                                        <Badge className="px-1 py-0.5 text-xs">
+                                            +{remainingModules.length} more
+                                        </Badge>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <span>{remainingModules.join(", ")}</span>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        )}
+                    </div>
+                );
+            },
+        },
+
         {
             accessorKey: "createdAt",
             header: ({ column }) => <DataTableColumnHeader column={column} title="Created At" />,

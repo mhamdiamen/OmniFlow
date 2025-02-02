@@ -5,30 +5,27 @@ import { v } from "convex/values";
 
 export const createRole = mutation({
     args: {
-        companyId: v.optional(v.string()),
+        companyIds: v.optional(v.array(v.string())), // Now an array of company IDs
         name: v.string(),
         description: v.optional(v.string()),
-        permissions: v.array(v.id("permissions")), // Array of permission IDs
+        permissions: v.array(v.id("permissions")), 
     },
     handler: async (ctx, args) => {
         const userId = await getAuthUserId(ctx);
         if (!userId) throw new Error("User not authenticated");
 
-        // Validate permissions exist
         for (const permissionId of args.permissions) {
             const permission = await ctx.db.get(permissionId);
             if (!permission) throw new Error(`Permission ID ${permissionId} not found`);
         }
 
-        // Create the role
         const roleId = await ctx.db.insert("roles", {
-            companyId: args.companyId,
+            companyId: args.companyIds, // Store as an array
             name: args.name,
             description: args.description,
             permissions: args.permissions,
         });
 
-        // Update the assignedRoles field for each permission
         for (const permissionId of args.permissions) {
             const permission = await ctx.db.get(permissionId);
             if (permission) {
@@ -40,6 +37,7 @@ export const createRole = mutation({
         return roleId;
     },
 });
+
 
 export const removeRoleById = mutation({
     args: {
@@ -70,20 +68,19 @@ export const removeRoleById = mutation({
 });
 export const updateRole = mutation({
     args: {
-        id: v.id("roles"), // Role ID to update
-        name: v.optional(v.string()), // Optional new name
-        description: v.optional(v.string()), // Optional new description
-        permissions: v.optional(v.array(v.id("permissions"))), // Optional new permissions
+        id: v.id("roles"),
+        companyIds: v.optional(v.array(v.string())), // Now an array of company IDs
+        name: v.optional(v.string()),
+        description: v.optional(v.string()),
+        permissions: v.optional(v.array(v.id("permissions"))), 
     },
     handler: async (ctx, args) => {
         const userId = await getAuthUserId(ctx);
         if (!userId) throw new Error("User not authenticated");
 
-        // Fetch the existing role
         const role = await ctx.db.get(args.id);
         if (!role) throw new Error("Role not found");
 
-        // Validate new permissions (if provided)
         if (args.permissions) {
             for (const permissionId of args.permissions) {
                 const permission = await ctx.db.get(permissionId);
@@ -91,19 +88,16 @@ export const updateRole = mutation({
             }
         }
 
-        // Prepare the updated fields
         const updatedFields = {
-            name: args.name ?? role.name, // Use existing name if not provided
-            description: args.description ?? role.description, // Use existing description if not provided
-            permissions: args.permissions ?? role.permissions, // Use existing permissions if not provided
+            companyId: args.companyIds ?? role.companyId, 
+            name: args.name ?? role.name,
+            description: args.description ?? role.description,
+            permissions: args.permissions ?? role.permissions,
         };
 
-        // Update the role in the database
         await ctx.db.patch(args.id, updatedFields);
 
-        // If permissions were updated, handle assignedRoles for permissions
         if (args.permissions) {
-            // Remove the role from the assignedRoles of old permissions
             for (const permissionId of role.permissions) {
                 const permission = await ctx.db.get(permissionId);
                 if (permission) {
@@ -114,7 +108,6 @@ export const updateRole = mutation({
                 }
             }
 
-            // Add the role to the assignedRoles of new permissions
             for (const permissionId of args.permissions) {
                 const permission = await ctx.db.get(permissionId);
                 if (permission) {
@@ -124,9 +117,10 @@ export const updateRole = mutation({
             }
         }
 
-        return args.id; // Return the updated role ID
+        return args.id;
     },
 });
+
 export const bulkRemoveRoles = mutation({
     args: {
         roleIds: v.array(v.id("roles")), // Array of role IDs to delete

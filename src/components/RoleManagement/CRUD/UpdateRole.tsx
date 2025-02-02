@@ -3,8 +3,10 @@
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -38,7 +40,6 @@ export function UpdateRole({ roleId }: UpdateRoleProps) {
     if (role) {
       setRoleName(role.name);
       setRoleDescription(role.description || "");
-      // Set selectedPermissions to the role's permission IDs
       setSelectedPermissions(role.permissions);
     }
   }, [role]);
@@ -76,8 +77,8 @@ export function UpdateRole({ roleId }: UpdateRoleProps) {
   const handlePermissionChange = (permissionId: Id<"permissions">) => {
     setSelectedPermissions((prev) =>
       prev.includes(permissionId)
-        ? prev.filter((id) => id !== permissionId) // Deselect if already selected
-        : [...prev, permissionId] // Select if not already selected
+        ? prev.filter((id) => id !== permissionId)
+        : [...prev, permissionId]
     );
   };
 
@@ -93,17 +94,22 @@ export function UpdateRole({ roleId }: UpdateRoleProps) {
           <Edit size={16} strokeWidth={2} aria-hidden="true" />
         </Button>
       </DialogTrigger>
-
-      <DialogContent className="sm:max-w-[600px] md:max-w-[800px] p-4 md:p-6 overflow-y-auto max-h-[90vh]">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-bold">Update Role</DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground">
-            Modify the fields below to update the role.
+      <DialogContent className="flex flex-col gap-0 p-0 sm:max-h-[80vh] sm:max-w-5xl [&>button:last-child]:top-3.5">
+        <DialogHeader className="contents space-y-0 text-left">
+          <DialogTitle className="border-b border-border px-6 py-4 text-base">
+            Update Role
+          </DialogTitle>
+          <DialogDescription asChild>
+            <div className="px-6 py-4">
+              Modify the fields below to update the role.
+            </div>
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 md:gap-6">
+
+        {/* Scrollable container for form fields */}
+        <div className="px-6 py-4 overflow-y-auto" style={{ maxHeight: "60vh" }}>
           {/* Role Name */}
-          <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center">
             <Label htmlFor="roleName" className="sm:col-span-1 text-sm font-bold">
               Role Name
             </Label>
@@ -117,7 +123,7 @@ export function UpdateRole({ roleId }: UpdateRoleProps) {
           </div>
 
           {/* Role Description */}
-          <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center mt-4">
             <Label htmlFor="roleDescription" className="sm:col-span-1 text-sm font-bold">
               Description
             </Label>
@@ -131,11 +137,11 @@ export function UpdateRole({ roleId }: UpdateRoleProps) {
           </div>
 
           {/* Permissions */}
-          <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-start mt-4">
             <Label htmlFor="permissions" className="sm:col-span-1 text-sm font-bold">
               Permissions
             </Label>
-            <div className="sm:col-span-3">
+            <div className="sm:col-span-4">
               <PermissionsSelector
                 selectedPermissions={selectedPermissions}
                 onPermissionChange={handlePermissionChange}
@@ -144,18 +150,19 @@ export function UpdateRole({ roleId }: UpdateRoleProps) {
           </div>
         </div>
 
-        <div className="flex justify-end space-x-4 mt-6">
-          <Button
-            type="button"
-            onClick={handleSave}
-            disabled={isSaving}
-          >
-            {isSaving ? (
+        <DialogFooter className="border-t border-border px-6 py-4 sm:items-center">
+          <DialogClose asChild>
+            <Button type="button" variant="outline">
+              Cancel
+            </Button>
+          </DialogClose>
+          <Button type="button" onClick={handleSave} disabled={isSaving}>
+            {isSaving && (
               <Loader2 className="animate-spin mr-2 h-4 w-4" aria-hidden="true" />
-            ) : null}
+            )}
             {isSaving ? "Saving..." : "Save"}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

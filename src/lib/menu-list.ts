@@ -7,8 +7,8 @@ import {
   LayoutGrid,
   LucideIcon,
   Book,
-  FileText
-} from "lucide-react"; // Import the Book icon for "My Chapters"
+  FileText,
+} from "lucide-react"; // Import the required icons
 
 type Submenu = {
   href: string;
@@ -29,8 +29,15 @@ type Group = {
   menus: Menu[];
 };
 
-export function getMenuList(pathname: string): Group[] {
-  return [
+/**
+ * Returns the list of menu groups.
+ *
+ * @param pathname - The current pathname (can be used to mark routes as active).
+ * @param userRole - The current user's role.
+ */
+export function getMenuList(pathname: string, userRole?: string): Group[] {
+  // Base menu groups for all users
+  const groups: Group[] = [
     {
       groupLabel: "",
       menus: [
@@ -38,9 +45,9 @@ export function getMenuList(pathname: string): Group[] {
           href: "/",
           label: "Home",
           icon: LayoutGrid,
-          submenus: []
-        }
-      ]
+          submenus: [],
+        },
+      ],
     },
     {
       groupLabel: "Contents",
@@ -52,35 +59,35 @@ export function getMenuList(pathname: string): Group[] {
           submenus: [
             {
               href: "/posts",
-              label: "All Posts"
+              label: "All Posts",
             },
             {
               href: "/posts/new",
-              label: "New Post"
-            }
-          ]
+              label: "New Post",
+            },
+          ],
         },
         {
           href: "/categories",
           label: "Categories",
-          icon: Bookmark
+          icon: Bookmark,
         },
         {
           href: "/tags",
           label: "Tags",
-          icon: Tag
+          icon: Tag,
         },
         {
           href: "/stories",
           label: "My Stories", // New menu for My Stories
-          icon:Book  // Use FileText icon for representation
+          icon: Book, // Using Book icon
         },
         {
           href: "/chapters",
           label: "My Chapters", // Adding My Chapters
-          icon: FileText // Use the Book icon for representation
-        }
-      ]
+          icon: FileText, // Using FileText icon
+        },
+      ],
     },
     {
       groupLabel: "Settings",
@@ -88,14 +95,42 @@ export function getMenuList(pathname: string): Group[] {
         {
           href: "/users",
           label: "Users",
-          icon: Users
+          icon: Users,
         },
         {
           href: "/account",
           label: "Account",
-          icon: Settings
-        }
-      ]
-    }
+          icon: Settings,
+        },
+      ],
+    },
   ];
+
+  // If the current user's role is "Super Admin", add extra admin-specific routes.
+  if (userRole === "Super Admin") {
+    groups.push({
+      groupLabel: "Super Administration",
+      menus: [
+        {
+          href: "/(superAdmin)/dashboard",
+          label: "Admin Dashboard",
+          icon: LayoutGrid,
+        },
+        {
+          href: "/roles",
+          label: "Manage Roles",
+          icon: Users,
+        },
+        {
+          href: "/modules",
+          label: "Manage Modules",
+          icon: Settings,
+        },
+      ],
+    });
+  }
+
+  // (Optional) You can add logic here to mark menus/submenus as active based on pathname.
+
+  return groups;
 }

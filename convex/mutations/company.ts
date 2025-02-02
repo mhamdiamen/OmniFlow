@@ -3,9 +3,9 @@ import { v } from "convex/values";
 import { mutation } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
 
-/* export const createCompany = mutation({
+export const createCompany = mutation({
   args: {
-    name: v.string(), // Company name
+    name: v.string(),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -20,33 +20,72 @@ import { Id } from "../_generated/dataModel";
       settings: {},
     });
 
-    // 2️⃣ Define Company Owner permissions
-    const ownerPermissions = ["manage_users", "manage_company_settings", "manage_roles"];
+    // 2️⃣ Check if "Company Owner" role exists (either for this company or globally)
+    let companyOwnerRole = await ctx.db
+    .query("roles")
+    .filter(q => 
+      q.or(
+        q.eq(q.field("companyId"), [companyId]),  // Matches the exact array (if `companyId` is an array)
+        q.eq(q.field("name"), "Company Owner")    // Global "Company Owner" role
+      )
+    )
+    .first();
+  
 
-    // 3️⃣ Fetch or insert permissions and get their IDs
-    const permissionIds = [];
-    for (const permissionName of ownerPermissions) {
-      let permission = await ctx.db.query("permissions").filter({ name: permissionName }).unique();
-      if (!permission) {
-        permission = await ctx.db.insert("permissions", { name: permissionName });
+    // 3️⃣ If the role doesn't exist, create it
+    if (!companyOwnerRole) {
+      const ownerPermissions = ["manage_users", "manage_company_settings", "manage_roles"];
+
+      // Fetch existing permissions
+      const existingPermissions = await Promise.all(
+        ownerPermissions.map(async (permissionName) =>
+          ctx.db.query("permissions").filter(q => q.eq(q.field("name"), permissionName)).first()
+        )
+      );
+
+      // Remove null values
+      const existingPermissionsFiltered = existingPermissions.filter(Boolean) as { _id: Id<"permissions">; name: string }[];
+
+      // Get existing permission IDs
+      const existingPermissionIds = existingPermissionsFiltered.map(p => p._id);
+
+      // Insert only missing permissions
+      const newPermissionIds: Id<"permissions">[] = [];
+      for (const permissionName of ownerPermissions) {
+        if (!existingPermissionsFiltered.find(p => p.name === permissionName)) {
+          const newPermissionId = await ctx.db.insert("permissions", {
+            name: permissionName,
+            assignedRoles: [],
+            assignedModules: [], // Added this required field
+          });
+          newPermissionIds.push(newPermissionId);
+        }
       }
-      permissionIds.push(permission._id as Id<"permissions">);
+
+      // Combine all permission IDs
+      const permissionIds = [...existingPermissionIds, ...newPermissionIds];
+
+      // Insert the new role and retrieve it
+      const newRoleId = await ctx.db.insert("roles", {
+        companyId: [companyId], // Store companyId as an array
+        name: "Company Owner",
+        permissions: permissionIds,
+      });
+
+      companyOwnerRole = await ctx.db.get(newRoleId);
+      if (!companyOwnerRole) throw new Error("Failed to create the Company Owner role.");
+    } else {
+      // If the role exists, update its companyId array
+      const updatedCompanyIds = [...(companyOwnerRole.companyId || []), companyId];
+      await ctx.db.patch(companyOwnerRole._id, { companyId: updatedCompanyIds });
     }
 
-    // 4️⃣ Create the "Company Owner" role
-    const roleId = await ctx.db.insert("roles", {
+    // 4️⃣ Assign the role to the user
+    await ctx.db.patch(userId as Id<"users">, {
       companyId,
-      name: "Company Owner",
-      permissions: permissionIds, // Use permission IDs
+      roleId: companyOwnerRole._id as Id<"roles">,
     });
 
-    // 5️⃣ Assign the role to the user
-    await ctx.db.patch(userId, {
-      companyId,
-      roleId: roleId as Id<"roles">,
-    });
-
-    return { companyId, roleId };
+    return { companyId, roleId: companyOwnerRole._id };
   },
-}); */
-
+});

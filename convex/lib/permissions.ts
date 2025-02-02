@@ -10,17 +10,18 @@ export async function checkPermission(
     permission: string
 ): Promise<boolean> {
     const user = await ctx.db.get(userId);
-    if (!user || !user.companyId || !user.roleId) return false;
+    if (!user || !user.roleId) return false;
 
-    // Fetch the role and its permissions
     const role = await ctx.db.get(user.roleId as Id<"roles">);
     if (!role) return false;
 
-    // Fetch permissions by IDs
+    // Allow Super Admins to do anything
+    if (role.name === "Super Admin") return true;
+
+    // Check if the permission exists in the role
     const permissions = await Promise.all(
         role.permissions.map((permissionId) => ctx.db.get(permissionId as Id<"permissions">))
     );
 
-    // Check if the permission name matches
     return permissions.some((p) => p && p.name === permission);
 }
