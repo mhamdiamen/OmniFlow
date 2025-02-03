@@ -131,12 +131,12 @@ export function getMenuList(
         },
         {
           href: "/roles",
-          label: "Manage Roles",
+          label: "Roles & Permissions",
           icon: Users,
         },
         {
           href: "/modules",
-          label: "Manage Modules",
+          label: "Modules",
           icon: Settings,
         },
       ],

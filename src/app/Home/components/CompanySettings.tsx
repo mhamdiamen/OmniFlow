@@ -69,21 +69,21 @@ export default function CompanySettings() {
       if (!uploadUrl) {
         throw new Error("Failed to generate upload URL");
       }
-      
+
       // 2. Upload the file using a POST request to the returned URL
       const response = await fetch(uploadUrl, {
         method: "POST", // changed from PUT to POST
         body: file,
         headers: { "Content-Type": file.type },
       });
-      
+
       // Optionally, log the status and any response text for debugging:
       if (!response.ok) {
         const errorText = await response.text();
         console.error("Upload error status:", response.status, errorText);
         throw new Error("File upload failed");
       }
-      
+
       // 3. Parse the response to extract the storageId
       const { storageId } = await response.json();
       return { status: "success" as const, result: storageId };
@@ -92,7 +92,7 @@ export default function CompanySettings() {
       return { status: "error" as const, error: error.message };
     }
   };
-  
+
 
   // Handle form submission to update company settings
   const handleSave = async () => {
@@ -137,24 +137,7 @@ export default function CompanySettings() {
 
       <Separator />
 
-      {/* Company Logo Section (File Uploader) */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Company Logo</h2>
-        <DynamicDropzone
-          onDropFile={async (file) => {
-            const result = await handleFileDrop(file);
-            if (result.status === "success") {
-              // Save the storageId as logoUrl; DynamicDropzone will later query for the served URL
-              setLogoUrl(result.result);
-            }
-            return result;
-          }}
-          initialPreview={logoUrl}
-          triggerLabel="Upload Company Logo"
-          triggerDescription="Select an image smaller than 10MB"
-          fallbackText="Logo"
-        />
-      </div>
+
 
       <Separator />
 
@@ -389,6 +372,26 @@ export default function CompanySettings() {
                   className="max-w-lg"
                 />
               </div>
+            </div>
+            <Separator />
+
+            {/* Company Logo Section (File Uploader) */}
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold">Company Logo</h2>
+              <DynamicDropzone
+                onDropFile={async (file) => {
+                  const result = await handleFileDrop(file);
+                  if (result.status === "success") {
+                    // Save the storageId as logoUrl; DynamicDropzone will later query for the served URL
+                    setLogoUrl(result.result);
+                  }
+                  return result;
+                }}
+                initialPreview={logoUrl}
+                triggerLabel="Upload Company Logo"
+                triggerDescription="Select an image smaller than 10MB"
+                fallbackText="Logo"
+              />
             </div>
           </div>
         </div>
