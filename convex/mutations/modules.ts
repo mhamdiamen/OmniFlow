@@ -4,27 +4,30 @@ import { v } from "convex/values";
 
 export const createModule = mutation({
     args: {
-        name: v.string(),
-        description: v.optional(v.string()),
-        isActiveByDefault: v.boolean(),
-        // Optionally accept an array of permission IDs to pre-assign to this module.
-        permissions: v.optional(v.array(v.id("permissions"))),
+      name: v.string(),
+      slug: v.string(), // Used as fallback or for generating a route if needed.
+      customRoute: v.string(), // Required: every module must supply its dedicated route.
+      description: v.optional(v.string()),
+      isActiveByDefault: v.boolean(),
+      permissions: v.optional(v.array(v.id("permissions"))),
     },
     handler: async (ctx, args) => {
-        const userId = await getAuthUserId(ctx);
-        if (!userId) throw new Error("User not authenticated");
-
-        // Insert the new module record into the modules table.
-        const moduleId = await ctx.db.insert("modules", {
-            name: args.name,
-            description: args.description,
-            isActiveByDefault: args.isActiveByDefault,
-            permissions: args.permissions ?? [], // default to an empty array if not provided
-        });
-
-        return moduleId;
+      const userId = await getAuthUserId(ctx);
+      if (!userId) throw new Error("User not authenticated");
+  
+      // Insert the new module record
+      const moduleId = await ctx.db.insert("modules", {
+        name: args.name,
+        slug: args.slug,
+        customRoute: args.customRoute, // For example: "/crm" or "/project-management"
+        description: args.description,
+        isActiveByDefault: args.isActiveByDefault,
+        permissions: args.permissions ?? [],
+      });
+  
+      return moduleId;
     },
-});
+  });
 export const deleteModule = mutation({
     args: {
         // Module ID to delete.

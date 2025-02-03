@@ -88,3 +88,36 @@ export const fetchModulesForCompany = query({
         return modules.filter((module) => module !== null);
     },
 });
+
+// In your query:
+export const getActivatedModules = query({
+    args: { companyId: v.string() },
+    handler: async ({ db }, { companyId }) => {
+        // Query the company_modules table for this company.
+        const companyModules = await db
+            .query("company_modules")
+            .filter((b) => b.eq(b.field("companyId"), companyId))
+            .collect();
+
+        const activatedModuleIds = companyModules.map((cm) => cm.moduleId);
+        if (activatedModuleIds.length === 0) return [];
+
+        // Fetch the activated modules.
+        const modules = await db
+            .query("modules")
+            .filter((b) =>
+                b.or(...activatedModuleIds.map((id) => b.eq(b.field("_id"), id)))
+            )
+            .collect();
+
+        return modules.map((module) => ({
+            id: module._id,
+            name: module.name,
+            // Use the customRoute (e.g., "/crm", "/project-management") directly.
+            route: `/modules${module.customRoute}`,
+            description: module.description,
+            isActiveByDefault: module.isActiveByDefault,
+            permissions: module.permissions,
+        }));
+    },
+});

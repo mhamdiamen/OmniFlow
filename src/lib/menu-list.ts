@@ -1,3 +1,4 @@
+// src/lib/menu-list.ts
 import {
   Tag,
   Users,
@@ -5,10 +6,17 @@ import {
   Bookmark,
   SquarePen,
   LayoutGrid,
-  LucideIcon,
   Book,
   FileText,
-} from "lucide-react"; // Import the required icons
+  LucideIcon,
+} from "lucide-react";
+
+export type ModuleItem = {
+  id: string;
+  name: string;
+  route: string;
+  icon?: LucideIcon;
+};
 
 type Submenu = {
   href: string;
@@ -31,12 +39,12 @@ type Group = {
 
 /**
  * Returns the list of menu groups.
- *
- * @param pathname - The current pathname (can be used to mark routes as active).
- * @param userRole - The current user's role.
  */
-export function getMenuList(pathname: string, userRole?: string): Group[] {
-  // Base menu groups for all users
+export function getMenuList(
+  pathname: string,
+  userRole?: string,
+  modules?: ModuleItem[]
+): Group[] {
   const groups: Group[] = [
     {
       groupLabel: "",
@@ -57,14 +65,8 @@ export function getMenuList(pathname: string, userRole?: string): Group[] {
           label: "Posts",
           icon: SquarePen,
           submenus: [
-            {
-              href: "/posts",
-              label: "All Posts",
-            },
-            {
-              href: "/posts/new",
-              label: "New Post",
-            },
+            { href: "/posts", label: "All Posts" },
+            { href: "/posts/new", label: "New Post" },
           ],
         },
         {
@@ -79,13 +81,13 @@ export function getMenuList(pathname: string, userRole?: string): Group[] {
         },
         {
           href: "/stories",
-          label: "My Stories", // New menu for My Stories
-          icon: Book, // Using Book icon
+          label: "My Stories",
+          icon: Book,
         },
         {
           href: "/chapters",
-          label: "My Chapters", // Adding My Chapters
-          icon: FileText, // Using FileText icon
+          label: "My Chapters",
+          icon: FileText,
         },
       ],
     },
@@ -106,7 +108,18 @@ export function getMenuList(pathname: string, userRole?: string): Group[] {
     },
   ];
 
-  // If the current user's role is "Super Admin", add extra admin-specific routes.
+  // Append module items with their dedicated routes.
+  if (modules && modules.length > 0) {
+    groups.push({
+      groupLabel: "Modules",
+      menus: modules.map((mod) => ({
+        href: mod.route, // For example, "/crm" or "/project-management"
+        label: mod.name,
+        icon: mod.icon || Settings,
+      })),
+    });
+  }
+
   if (userRole === "Super Admin") {
     groups.push({
       groupLabel: "Super Administration",
@@ -129,8 +142,6 @@ export function getMenuList(pathname: string, userRole?: string): Group[] {
       ],
     });
   }
-
-  // (Optional) You can add logic here to mark menus/submenus as active based on pathname.
 
   return groups;
 }

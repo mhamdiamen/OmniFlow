@@ -23,14 +23,41 @@ const schema = defineSchema({
     name: v.string(),
     ownerId: v.string(),
     createdAt: v.float64(),
-    modules: v.array(v.id("modules")), // <-- now correctly typed
+    modules: v.array(v.id("modules")),
     settings: v.optional(v.any()),
+
+    // New fields:
+    logoUrl: v.optional(v.string()),
+
+    website: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    email: v.optional(v.string()),
+    address: v.optional(
+      v.object({
+        street: v.optional(v.string()),
+        city: v.optional(v.string()),
+        state: v.optional(v.string()),
+        zip: v.optional(v.string()),
+        country: v.optional(v.string()),
+      })
+    ),
+    industry: v.optional(v.string()),
+    size: v.optional(v.string()),
+    socialLinks: v.optional(
+      v.object({
+        facebook: v.optional(v.string()),
+        twitter: v.optional(v.string()),
+        linkedin: v.optional(v.string()),
+      })
+    ),
   }).index("ownerId", ["ownerId"]),
 
   modules: defineTable({
     name: v.string(),
     description: v.optional(v.string()),
     isActiveByDefault: v.boolean(),
+    slug: v.string(),         // New field: used as fallback for building URLs
+    customRoute: v.string(),  // New field: dedicated route for the module
     permissions: v.array(v.id("permissions")),
   }),
 

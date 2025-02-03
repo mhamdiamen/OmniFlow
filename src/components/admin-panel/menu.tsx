@@ -1,4 +1,3 @@
-// components/admin-panel/menu.tsx (Menu Component)
 "use client";
 
 import Link from "next/link";
@@ -19,6 +18,9 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import { useState } from "react";
 // Import the hook that fetches the current user.
 import { useCurrentUser } from "@/app/api/use-current-user";
+// Import your modules query (adjust the import to your project structure)
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 
 interface MenuProps {
   isOpen: boolean | undefined;
@@ -29,15 +31,20 @@ export function Menu({ isOpen }: MenuProps) {
   const [signingOut, setSigningOut] = useState(false);
   const pathname = usePathname();
 
-  // Retrieve the current user (including role) using your updated hook.
+  // Retrieve the current user (including role)
   const { data: currentUser, isLoading } = useCurrentUser();
-  // Default to "Guest" until data is loaded.
   const userRole = currentUser?.role || "Guest";
 
-  // Get the menu list with the current user's role.
-  const menuList = getMenuList(pathname, userRole);
+  // Fetch activated modules (if any) using the current user's companyId.
+  const activatedModules = useQuery(
+    api.queries.modules.getActivatedModules,
+    currentUser?.companyId ? { companyId: currentUser.companyId } : "skip"
+  );
 
-  // Optionally, you might want to show a loader while waiting for user data.
+  // Get the menu list with the current user's role and activated modules.
+  const menuList = getMenuList(pathname, userRole, activatedModules);
+
+  // Optionally, show a loader while waiting for user data.
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -139,7 +146,7 @@ export function Menu({ isOpen }: MenuProps) {
                     }}
                     variant="outline"
                     className="w-full justify-center h-10 mt-5"
-                    disabled={signingOut} // Disable the button while signing out
+                    disabled={signingOut}
                   >
                     <span className={cn(isOpen === false ? "" : "mr-4")}>
                       {signingOut ? (

@@ -22,15 +22,15 @@ export const createCompany = mutation({
 
     // 2️⃣ Check if "Company Owner" role exists (either for this company or globally)
     let companyOwnerRole = await ctx.db
-    .query("roles")
-    .filter(q => 
-      q.or(
-        q.eq(q.field("companyId"), [companyId]),  // Matches the exact array (if `companyId` is an array)
-        q.eq(q.field("name"), "Company Owner")    // Global "Company Owner" role
+      .query("roles")
+      .filter(q =>
+        q.or(
+          q.eq(q.field("companyId"), [companyId]),  // Matches the exact array (if `companyId` is an array)
+          q.eq(q.field("name"), "Company Owner")    // Global "Company Owner" role
+        )
       )
-    )
-    .first();
-  
+      .first();
+
 
     // 3️⃣ If the role doesn't exist, create it
     if (!companyOwnerRole) {
@@ -87,5 +87,48 @@ export const createCompany = mutation({
     });
 
     return { companyId, roleId: companyOwnerRole._id };
+  },
+});
+
+
+export const updateCompany = mutation({
+  args: {
+    companyId: v.id("companies"),
+    name: v.string(),
+    logoUrl: v.optional(v.string()),  // NEW: logoUrl field
+    website: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    email: v.optional(v.string()),
+    address: v.optional(
+      v.object({
+        street: v.optional(v.string()),
+        city: v.optional(v.string()),
+        state: v.optional(v.string()),
+        zip: v.optional(v.string()),
+        country: v.optional(v.string()),
+      })
+    ),
+    industry: v.optional(v.string()),
+    size: v.optional(v.string()),
+    socialLinks: v.optional(
+      v.object({
+        facebook: v.optional(v.string()),
+        twitter: v.optional(v.string()),
+        linkedin: v.optional(v.string()),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.companyId, {
+      name: args.name,
+      logoUrl: args.logoUrl,
+      website: args.website,
+      phone: args.phone,
+      email: args.email,
+      address: args.address,
+      industry: args.industry,
+      size: args.size,
+      socialLinks: args.socialLinks,
+    });
   },
 });

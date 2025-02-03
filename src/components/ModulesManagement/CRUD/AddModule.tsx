@@ -24,18 +24,26 @@ import { PermissionsSelector } from "../components/PermissionsSelector";
 
 export function AddModule() {
   const createModule = useMutation(api.mutations.modules.createModule);
+  
+  // Dialog open state.
   const [isOpen, setIsOpen] = useState(false);
+  
+  // Form state for the module.
   const [moduleName, setModuleName] = useState("");
+  const [moduleSlug, setModuleSlug] = useState("");
+  const [moduleCustomRoute, setModuleCustomRoute] = useState("");
   const [moduleDescription, setModuleDescription] = useState("");
   const [isActiveByDefault, setIsActiveByDefault] = useState(false);
   const [selectedPermissions, setSelectedPermissions] = useState<Id<"permissions">[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Use useId for a unique id for the switch
+  // Use useId for a unique id for the switch.
   const switchId = useId();
 
   const resetForm = () => {
     setModuleName("");
+    setModuleSlug("");
+    setModuleCustomRoute("");
     setModuleDescription("");
     setIsActiveByDefault(false);
     setSelectedPermissions([]);
@@ -46,11 +54,21 @@ export function AddModule() {
       toast.error("Module name is required.");
       return;
     }
+    if (!moduleSlug.trim()) {
+      toast.error("Module slug is required.");
+      return;
+    }
+    if (!moduleCustomRoute.trim()) {
+      toast.error("Module custom route is required.");
+      return;
+    }
 
     try {
       setIsSaving(true);
       await createModule({
         name: moduleName.trim(),
+        slug: moduleSlug.trim(),
+        customRoute: moduleCustomRoute.trim(),
         description: moduleDescription || undefined,
         isActiveByDefault,
         permissions: selectedPermissions.length > 0 ? selectedPermissions : undefined,
@@ -107,6 +125,34 @@ export function AddModule() {
               value={moduleName}
               onChange={(e) => setModuleName(e.target.value)}
               placeholder="Enter module name"
+              className="sm:col-span-3"
+            />
+          </div>
+
+          {/* Module Slug */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center mt-4">
+            <Label htmlFor="moduleSlug" className="sm:col-span-1 text-sm font-bold">
+              Slug
+            </Label>
+            <Input
+              id="moduleSlug"
+              value={moduleSlug}
+              onChange={(e) => setModuleSlug(e.target.value)}
+              placeholder="Enter URL-friendly slug (e.g., project-management)"
+              className="sm:col-span-3"
+            />
+          </div>
+
+          {/* Module Custom Route */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center mt-4">
+            <Label htmlFor="moduleCustomRoute" className="sm:col-span-1 text-sm font-bold">
+              Custom Route
+            </Label>
+            <Input
+              id="moduleCustomRoute"
+              value={moduleCustomRoute}
+              onChange={(e) => setModuleCustomRoute(e.target.value)}
+              placeholder='Enter custom route (e.g., "/project-management")'
               className="sm:col-span-3"
             />
           </div>

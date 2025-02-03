@@ -14,9 +14,10 @@ import { Loader2 } from "lucide-react"; // Import a loader icon
 import Home from "./Home/page";
 
 export default function HomePage() {
-
-
   return (
-    <Home />
+    <>
+      <Home />
+     
+    </>
   );
 }

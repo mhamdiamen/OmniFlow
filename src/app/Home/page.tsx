@@ -12,7 +12,7 @@ import CompanyCreationDialog from "@/components/company-creation-dialog";
 import CompanySettingsDialog from "@/components/company-settings-dialog";
 import { Loader2 } from "lucide-react";
 // Import the ReusableTabs component and its TabItem type
-import { ReusableTabs, TabItem } from "@/components/ReusableTabs";
+import ReusableTabs from "./components/ReusableTabs";
 
 export default function Home() {
   const me = useQuery(api.auth.getMe);
@@ -49,54 +49,6 @@ export default function Home() {
     }
   }
 
-  // Define tabs data to be used by ReusableTabs
-  const tabsData: TabItem[] = [
-    {
-      value: "overview",
-      label: "Overview",
-      // Example icon (you can use any icon component)
-      icon: (
-        <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth={2}>
-          <path d="M8 1v14M1 8h14" />
-        </svg>
-      ),
-      content: (
-        <p className="p-4 pt-1 text-center text-xs text-muted-foreground">
-          Welcome! This is the Overview tab.
-        </p>
-      ),
-    },
-    {
-      value: "modules",
-      label: "Modules",
-      icon: (
-        <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth={2}>
-          <rect x="2" y="2" width="12" height="12" rx="2" />
-        </svg>
-      ),
-      content: (
-        <p className="p-4 pt-1 text-center text-xs text-muted-foreground">
-          Configure your modules here.
-        </p>
-      ),
-    },
-    {
-      value: "settings",
-      label: "Settings",
-      icon: (
-        <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth={2}>
-          <circle cx="8" cy="8" r="3" />
-          <path d="M2 2l4 4m8-4l-4 4M2 14l4-4m8 4l-4-4" />
-        </svg>
-      ),
-      content: (
-        <p className="p-4 pt-1 text-center text-xs text-muted-foreground">
-          Update your settings.
-        </p>
-      ),
-    },
-  ];
-
   return (
     <AdminPanelLayout>
       <ContentLayout title="Recent Stories">
@@ -112,8 +64,7 @@ export default function Home() {
             <p>Overview of your activities and trends.</p>
           </>
         )}
-      </ContentLayout>
-
+        
       {isLoading ? (
         <Button variant="outline" disabled>
           <Loader2 className="animate-spin mr-2 h-4 w-4" />
@@ -151,11 +102,12 @@ export default function Home() {
             : null
         }
       />
-
       {/* Render the reusable tabs component */}
       <div className="mt-8 w-full">
-        <ReusableTabs items={tabsData} defaultValue="overview" className="w-full" />
+        <ReusableTabs  />
       </div>
+
+      </ContentLayout>
 
     </AdminPanelLayout>
   );
