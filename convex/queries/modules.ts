@@ -7,6 +7,7 @@ export const fetchAllModules = query({
     args: { companyId: v.optional(v.id("companies")) },
     handler: async (ctx, { companyId }) => {
         const modules = await ctx.db.query("modules").collect();
+        console.log("Fetched modules:", modules); // Add logging
 
         if (!companyId) {
             return modules.map((module) => ({
@@ -19,6 +20,7 @@ export const fetchAllModules = query({
             .query("company_modules")
             .filter((q) => q.eq(q.field("companyId"), companyId))
             .collect();
+        console.log("Fetched company modules:", companyModules); // Add logging
 
         const activeModuleIds = new Set(companyModules.map((cm) => cm.moduleId));
 

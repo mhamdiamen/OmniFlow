@@ -11,7 +11,7 @@ import { AddModule } from "@/components/ModulesManagement/CRUD/AddModule";
 
 export default function Test() {
     // Fetch raw modules data from Convex.
-    const rawModules = useQuery(api.queries.modules.fetchAllModules);
+    const rawModules = useQuery(api.queries.modules.fetchAllModules, {});
 
     // For modules, we assume the query returns the modules in the expected format.
     const modules = rawModules || [];

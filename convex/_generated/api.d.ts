@@ -27,6 +27,7 @@ import type * as queries_company from "../queries/company.js";
 import type * as queries_modules from "../queries/modules.js";
 import type * as queries_permissions from "../queries/permissions.js";
 import type * as queries_roles from "../queries/roles.js";
+import type * as queries_users from "../queries/users.js";
 import type * as users from "../users.js";
 
 /**
@@ -52,6 +53,7 @@ declare const fullApi: ApiFromModules<{
   "queries/modules": typeof queries_modules;
   "queries/permissions": typeof queries_permissions;
   "queries/roles": typeof queries_roles;
+  "queries/users": typeof queries_users;
   users: typeof users;
 }>;
 export declare const api: FilterApi<

@@ -35,7 +35,7 @@ export default function CompanySettingsDialog({
   company,
 }: CompanySettingsDialogProps) {
   // Fetch all available modules.
-  const modules = useQuery(api.queries.modules.fetchAllModules) || [];
+  const modules = useQuery(api.queries.modules.fetchAllModules, {}) || [];
 
   // Define mutations to activate/deactivate modules.
   const activateModule = useMutation(api.mutations.companyModules.activateModuleForCompany);
