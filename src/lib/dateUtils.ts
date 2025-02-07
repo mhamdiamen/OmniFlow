@@ -24,8 +24,8 @@ export function formatTimeAgo(dateString: string | undefined): string {
  * @param dateString - The date string to format (e.g., "2023-10-22T12:00:00Z").
  * @returns The formatted date string.
  */
-export function formatDate(dateString: string): string {
-  const date = new Date(dateString);
+export function formatDate(dateString: string | number): string {
+  const date = new Date(typeof dateString === "string" ? parseFloat(dateString) : dateString);
 
   // Get the month name
   const month = date.toLocaleString("default", { month: "long" });

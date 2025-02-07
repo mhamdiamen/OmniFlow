@@ -121,7 +121,7 @@ export const updateCompany = mutation({
   handler: async (ctx, args) => {
     await ctx.db.patch(args.companyId, {
       name: args.name,
-      logoUrl: args.logoUrl,
+      logoUrl: args.logoUrl, // Ensure this is updated
       website: args.website,
       phone: args.phone,
       email: args.email,
@@ -130,5 +130,45 @@ export const updateCompany = mutation({
       size: args.size,
       socialLinks: args.socialLinks,
     });
+  },
+});
+
+export const deleteCompany = mutation({
+  args: {
+    companyId: v.id("companies"),
+  },
+  handler: async (ctx, { companyId }) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("User not authenticated");
+
+    // Ensure the company exists.
+    const company = await ctx.db.get(companyId);
+    if (!company) throw new Error("Company not found");
+
+    // Fetch all company_modules entries for this company.
+    const companyModules = await ctx.db
+      .query("company_modules")
+      .filter((q) => q.eq(q.field("companyId"), companyId))
+      .collect();
+
+    // Decrement the activationCount for each module.
+    for (const companyModule of companyModules) {
+      const moduleDoc = await ctx.db.get(companyModule.moduleId);
+      if (moduleDoc) {
+        await ctx.db.patch(companyModule.moduleId, {
+          activationCount: (moduleDoc.activationCount || 0n) - 1n,
+        });
+      }
+    }
+
+    // Delete all company_modules entries for this company.
+    for (const companyModule of companyModules) {
+      await ctx.db.delete(companyModule._id);
+    }
+
+    // Delete the company.
+    await ctx.db.delete(companyId);
+
+    return { success: true };
   },
 });

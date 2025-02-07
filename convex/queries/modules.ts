@@ -2,25 +2,31 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server";
 
-// 1. Fetch all modules along with the names of their assigned permissions.
-export const fetchAllModules = query(async (ctx) => {
-    const modules = await ctx.db.query("modules").collect();
+// Fetch all modules along with their active state for a specific company.
+export const fetchAllModules = query({
+    args: { companyId: v.optional(v.id("companies")) },
+    handler: async (ctx, { companyId }) => {
+        const modules = await ctx.db.query("modules").collect();
 
-    return await Promise.all(
-        modules.map(async (module) => {
-            // For each module, fetch its permissions from the permissions table.
-            const permissions = await Promise.all(
-                (module.permissions || []).map((permissionId) => ctx.db.get(permissionId))
-            );
-            return {
+        if (!companyId) {
+            return modules.map((module) => ({
                 ...module,
-                // Return only the permission names, filtering out any nulls.
-                permissions: permissions
-                    .filter((perm) => perm !== null)
-                    .map((perm) => perm.name),
-            };
-        })
-    );
+                isActive: false,
+            }));
+        }
+
+        const companyModules = await ctx.db
+            .query("company_modules")
+            .filter((q) => q.eq(q.field("companyId"), companyId))
+            .collect();
+
+        const activeModuleIds = new Set(companyModules.map((cm) => cm.moduleId));
+
+        return modules.map((module) => ({
+            ...module,
+            isActive: activeModuleIds.has(module._id),
+        }));
+    },
 });
 
 // 2. Fetch a single module by its ID along with its assigned permission names.

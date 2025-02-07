@@ -56,10 +56,19 @@ const schema = defineSchema({
     name: v.string(),
     description: v.optional(v.string()),
     isActiveByDefault: v.boolean(),
-    slug: v.string(),         // New field: used as fallback for building URLs
-    customRoute: v.string(),  // New field: dedicated route for the module
+    slug: v.string(),         
+    customRoute: v.string(),  
     permissions: v.array(v.id("permissions")),
-  }),
+  
+    // New Enhancements
+    category: v.optional(v.string()),       // Category of the module (e.g., "Finance")
+    activationCount: v.optional(v.int64()), // How many companies activated this module
+    releaseNotes: v.optional(v.string()),   // Notes for module updates & changes
+  })
+    .index("slug", ["slug"])  
+    .index("category", ["category"])
+    .index("activationCount", ["activationCount"]),
+  
 
   // Updated company_modules table:
   company_modules: defineTable({

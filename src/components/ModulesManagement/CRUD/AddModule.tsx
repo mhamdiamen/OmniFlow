@@ -21,13 +21,15 @@ import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Switch } from "@/components/ui/switch";
 import { PermissionsSelector } from "../components/PermissionsSelector";
+import { GenreInput } from "../components/GenreInput"; // Import GenreInput component
+import { Tag } from "emblor";
 
 export function AddModule() {
   const createModule = useMutation(api.mutations.modules.createModule);
-  
+
   // Dialog open state.
   const [isOpen, setIsOpen] = useState(false);
-  
+
   // Form state for the module.
   const [moduleName, setModuleName] = useState("");
   const [moduleSlug, setModuleSlug] = useState("");
@@ -35,6 +37,8 @@ export function AddModule() {
   const [moduleDescription, setModuleDescription] = useState("");
   const [isActiveByDefault, setIsActiveByDefault] = useState(false);
   const [selectedPermissions, setSelectedPermissions] = useState<Id<"permissions">[]>([]);
+  const [category, setCategory] = useState<Tag[]>([]); // Update state to use Tag array
+  const [releaseNotes, setReleaseNotes] = useState(""); // New field
   const [isSaving, setIsSaving] = useState(false);
 
   // Use useId for a unique id for the switch.
@@ -47,6 +51,8 @@ export function AddModule() {
     setModuleDescription("");
     setIsActiveByDefault(false);
     setSelectedPermissions([]);
+    setCategory([]); // Reset new field
+    setReleaseNotes(""); // Reset new field
   };
 
   const handleSave = async () => {
@@ -72,6 +78,8 @@ export function AddModule() {
         description: moduleDescription || undefined,
         isActiveByDefault,
         permissions: selectedPermissions.length > 0 ? selectedPermissions : undefined,
+        category: category.map(tag => tag.text).join(", ") || undefined, // Convert tags to string
+        releaseNotes: releaseNotes || undefined, // New field
       });
       toast.success("Module created successfully!");
       resetForm();
@@ -167,6 +175,35 @@ export function AddModule() {
               value={moduleDescription}
               onChange={(e) => setModuleDescription(e.target.value)}
               placeholder="Enter module description (optional)"
+              className="sm:col-span-3"
+            />
+          </div>
+
+          {/* Category */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center mt-4">
+            <Label htmlFor="category" className="sm:col-span-1 text-sm font-bold">
+              Category
+            </Label>
+            <div className="sm:col-span-3">
+              <GenreInput
+                id="category"
+                initialTags={category}
+                onTagsChange={setCategory}
+                placeholder="Enter category (e.g., Finance)"
+              />
+            </div>
+          </div>
+
+          {/* Release Notes */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center mt-4">
+            <Label htmlFor="releaseNotes" className="sm:col-span-1 text-sm font-bold">
+              Release Notes
+            </Label>
+            <Input
+              id="releaseNotes"
+              value={releaseNotes}
+              onChange={(e) => setReleaseNotes(e.target.value)}
+              placeholder="Enter release notes (optional)"
               className="sm:col-span-3"
             />
           </div>

@@ -21,6 +21,8 @@ import { toast } from "sonner";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { PermissionsSelector } from "../components/PermissionsSelector";
+import { GenreInput } from "../components/GenreInput"; // Import GenreInput component
+import { Tag } from "emblor";
 
 interface UpdateModuleProps {
   moduleId: Id<"modules">;
@@ -36,15 +38,22 @@ export function UpdateModule({ moduleId }: UpdateModuleProps) {
   const [moduleDescription, setModuleDescription] = useState("");
   const [isActiveByDefault, setIsActiveByDefault] = useState(false);
   const [selectedPermissions, setSelectedPermissions] = useState<Id<"permissions">[]>([]);
+  const [category, setCategory] = useState<Tag[]>([]); // Update state to use Tag array
+  const [releaseNotes, setReleaseNotes] = useState(""); // New field
   const [isSaving, setIsSaving] = useState(false);
+  const [moduleSlug, setModuleSlug] = useState(""); // Add state for slug
+  const [moduleCustomRoute, setModuleCustomRoute] = useState(""); // Add state for custom route
 
   useEffect(() => {
     if (moduleData) {
       setModuleName(moduleData.name);
       setModuleDescription(moduleData.description ?? "");
       setIsActiveByDefault(moduleData.isActiveByDefault);
-      // moduleData.permissions is already an array of IDs.
       setSelectedPermissions(moduleData.permissions);
+      setCategory(moduleData.category ? moduleData.category.split(", ").map((text, index) => ({ id: `${index}`, text })) : []); // Convert string to tags
+      setReleaseNotes(moduleData.releaseNotes ?? ""); // New field
+      setModuleSlug(moduleData.slug ?? ""); // Set slug from module data
+      setModuleCustomRoute(moduleData.customRoute ?? ""); // Set custom route from module data
     }
   }, [moduleData]);
 
@@ -61,15 +70,27 @@ export function UpdateModule({ moduleId }: UpdateModuleProps) {
       toast.error("Module name is required.");
       return;
     }
+    if (!moduleSlug.trim()) {
+      toast.error("Module slug is required.");
+      return;
+    }
+    if (!moduleCustomRoute.trim()) {
+      toast.error("Module custom route is required.");
+      return;
+    }
 
     try {
       setIsSaving(true);
       await updateModule({
         id: moduleId,
         name: moduleName.trim(),
+        slug: moduleSlug.trim(), // Include slug in update
+        customRoute: moduleCustomRoute.trim(), // Include custom route in update
         description: moduleDescription || undefined,
         isActiveByDefault,
         permissions: selectedPermissions.length > 0 ? selectedPermissions : undefined,
+        category: category.map(tag => tag.text).join(", ") || undefined, // Convert tags to string
+        releaseNotes: releaseNotes || undefined, // New field
       });
       toast.success("Module updated successfully!");
       setIsOpen(false);
@@ -122,6 +143,34 @@ export function UpdateModule({ moduleId }: UpdateModuleProps) {
             />
           </div>
 
+          {/* Module Slug */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center mt-4">
+            <Label htmlFor="moduleSlug" className="sm:col-span-1 text-sm font-bold">
+              Slug
+            </Label>
+            <Input
+              id="moduleSlug"
+              value={moduleSlug}
+              onChange={(e) => setModuleSlug(e.target.value)}
+              placeholder="Enter URL-friendly slug (e.g., project-management)"
+              className="sm:col-span-3"
+            />
+          </div>
+
+          {/* Module Custom Route */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center mt-4">
+            <Label htmlFor="moduleCustomRoute" className="sm:col-span-1 text-sm font-bold">
+              Custom Route
+            </Label>
+            <Input
+              id="moduleCustomRoute"
+              value={moduleCustomRoute}
+              onChange={(e) => setModuleCustomRoute(e.target.value)}
+              placeholder='Enter custom route (e.g., "/project-management")'
+              className="sm:col-span-3"
+            />
+          </div>
+
           {/* Module Description */}
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center mt-4">
             <Label htmlFor="moduleDescription" className="sm:col-span-1 text-sm font-bold">
@@ -132,6 +181,35 @@ export function UpdateModule({ moduleId }: UpdateModuleProps) {
               value={moduleDescription}
               onChange={(e) => setModuleDescription(e.target.value)}
               placeholder="Enter module description (optional)"
+              className="sm:col-span-3"
+            />
+          </div>
+
+          {/* Category */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center mt-4">
+            <Label htmlFor="category" className="sm:col-span-1 text-sm font-bold">
+              Category
+            </Label>
+            <div className="sm:col-span-3">
+              <GenreInput
+                id="category"
+                initialTags={category}
+                onTagsChange={setCategory}
+                placeholder="Enter category (e.g., Finance)"
+              />
+            </div>
+          </div>
+
+          {/* Release Notes */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center mt-4">
+            <Label htmlFor="releaseNotes" className="sm:col-span-1 text-sm font-bold">
+              Release Notes
+            </Label>
+            <Input
+              id="releaseNotes"
+              value={releaseNotes}
+              onChange={(e) => setReleaseNotes(e.target.value)}
+              placeholder="Enter release notes (optional)"
               className="sm:col-span-3"
             />
           </div>

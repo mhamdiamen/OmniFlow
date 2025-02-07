@@ -4,30 +4,39 @@ import { v } from "convex/values";
 
 export const createModule = mutation({
     args: {
-      name: v.string(),
-      slug: v.string(), // Used as fallback or for generating a route if needed.
-      customRoute: v.string(), // Required: every module must supply its dedicated route.
-      description: v.optional(v.string()),
-      isActiveByDefault: v.boolean(),
-      permissions: v.optional(v.array(v.id("permissions"))),
+        name: v.string(),
+        slug: v.string(),
+        customRoute: v.string(),
+        description: v.optional(v.string()),
+        isActiveByDefault: v.boolean(),
+        permissions: v.optional(v.array(v.id("permissions"))),
+        category: v.optional(v.string()),
+        activationCount: v.optional(v.number()), // Use `number` here for input
+        releaseNotes: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-      const userId = await getAuthUserId(ctx);
-      if (!userId) throw new Error("User not authenticated");
-  
-      // Insert the new module record
-      const moduleId = await ctx.db.insert("modules", {
-        name: args.name,
-        slug: args.slug,
-        customRoute: args.customRoute, // For example: "/crm" or "/project-management"
-        description: args.description,
-        isActiveByDefault: args.isActiveByDefault,
-        permissions: args.permissions ?? [],
-      });
-  
-      return moduleId;
+        const userId = await getAuthUserId(ctx);
+        if (!userId) throw new Error("User not authenticated");
+
+        // Convert activationCount to bigint if provided
+        const activationCount = args.activationCount !== undefined ? BigInt(args.activationCount) : undefined;
+
+        // Insert the new module record
+        const moduleId = await ctx.db.insert("modules", {
+            name: args.name,
+            slug: args.slug,
+            customRoute: args.customRoute,
+            description: args.description,
+            isActiveByDefault: args.isActiveByDefault,
+            permissions: args.permissions ?? [],
+            category: args.category,
+            activationCount, // Use the converted bigint value
+            releaseNotes: args.releaseNotes,
+        });
+
+        return moduleId;
     },
-  });
+});
 export const deleteModule = mutation({
     args: {
         // Module ID to delete.
@@ -84,73 +93,71 @@ export const deleteModule = mutation({
 
 export const updateModule = mutation({
     args: {
-        // Module ID to update.
-        id: v.id("modules"),
-        // Optional fields to update.
-        name: v.optional(v.string()),
-        description: v.optional(v.string()),
-        isActiveByDefault: v.optional(v.boolean()),
-        // Optionally update the array of permission IDs.
-        permissions: v.optional(v.array(v.id("permissions"))),
+      id: v.id("modules"),
+      name: v.optional(v.string()),
+      slug: v.optional(v.string()), // Add slug as an optional field
+      customRoute: v.optional(v.string()), // Add customRoute as an optional field
+      description: v.optional(v.string()),
+      isActiveByDefault: v.optional(v.boolean()),
+      permissions: v.optional(v.array(v.id("permissions"))),
+      category: v.optional(v.string()), // New field
+      releaseNotes: v.optional(v.string()), // New field
     },
     handler: async (ctx, args) => {
-        const userId = await getAuthUserId(ctx);
-        if (!userId) throw new Error("User not authenticated");
-
-        // Ensure the module exists.
-        const moduleDoc = await ctx.db.get(args.id);
-        if (!moduleDoc) throw new Error("Module not found");
-
-        // Determine the new permissions array:
-        // Use the new value if provided, otherwise fallback to the existing value.
-        const newPermissions = args.permissions ?? moduleDoc.permissions;
-        const oldPermissions = moduleDoc.permissions;
-
-        // Prepare the updated fields for the module.
-        const updatedFields = {
-            name: args.name ?? moduleDoc.name,
-            description: args.description ?? moduleDoc.description,
-            isActiveByDefault: args.isActiveByDefault ?? moduleDoc.isActiveByDefault,
-            permissions: newPermissions,
-        };
-
-        // Patch the module document with the updated fields.
-        await ctx.db.patch(args.id, updatedFields);
-
-        // ----- Update the reverse relationship in the permissions table -----
-        // Compute permissions that were added and removed.
-        const addedPermissions = newPermissions.filter(
-            (permId) => !oldPermissions.includes(permId)
-        );
-        const removedPermissions = oldPermissions.filter(
-            (permId) => !newPermissions.includes(permId)
-        );
-
-        // For each permission that was added, ensure the module is in its assignedModules array.
-        for (const permId of addedPermissions) {
-            const permission = await ctx.db.get(permId);
-            if (!permission) continue;
-            // Avoid duplicates: add the module ID only if it isn’t already present.
-            if (!permission.assignedModules.includes(args.id)) {
-                const updatedAssignedModules = [...permission.assignedModules, args.id];
-                await ctx.db.patch(permId, { assignedModules: updatedAssignedModules });
-            }
+      const userId = await getAuthUserId(ctx);
+      if (!userId) throw new Error("User not authenticated");
+  
+      // Ensure the module exists.
+      const moduleDoc = await ctx.db.get(args.id);
+      if (!moduleDoc) throw new Error("Module not found");
+  
+      // Prepare the updated fields for the module.
+      const updatedFields = {
+        name: args.name ?? moduleDoc.name,
+        slug: args.slug ?? moduleDoc.slug, // Include slug
+        customRoute: args.customRoute ?? moduleDoc.customRoute, // Include customRoute
+        description: args.description ?? moduleDoc.description,
+        isActiveByDefault: args.isActiveByDefault ?? moduleDoc.isActiveByDefault,
+        permissions: args.permissions ?? moduleDoc.permissions,
+        category: args.category ?? moduleDoc.category, // New field
+        releaseNotes: args.releaseNotes ?? moduleDoc.releaseNotes, // New field
+      };
+  
+      // Patch the module document with the updated fields.
+      await ctx.db.patch(args.id, updatedFields);
+  
+      // Update reverse relationships in the permissions table (if needed).
+      const newPermissions = updatedFields.permissions;
+      const oldPermissions = moduleDoc.permissions;
+  
+      const addedPermissions = newPermissions.filter(
+        (permId) => !oldPermissions.includes(permId)
+      );
+      const removedPermissions = oldPermissions.filter(
+        (permId) => !newPermissions.includes(permId)
+      );
+  
+      for (const permId of addedPermissions) {
+        const permission = await ctx.db.get(permId);
+        if (!permission) continue;
+        if (!permission.assignedModules.includes(args.id)) {
+          const updatedAssignedModules = [...permission.assignedModules, args.id];
+          await ctx.db.patch(permId, { assignedModules: updatedAssignedModules });
         }
-
-        // For each permission that was removed, remove the module from its assignedModules array.
-        for (const permId of removedPermissions) {
-            const permission = await ctx.db.get(permId);
-            if (!permission) continue;
-            const updatedAssignedModules = permission.assignedModules.filter(
-                (moduleId) => moduleId !== args.id
-            );
-            await ctx.db.patch(permId, { assignedModules: updatedAssignedModules });
-        }
-        // ---------------------------------------------------------------------
-
-        return { success: true };
+      }
+  
+      for (const permId of removedPermissions) {
+        const permission = await ctx.db.get(permId);
+        if (!permission) continue;
+        const updatedAssignedModules = permission.assignedModules.filter(
+          (moduleId) => moduleId !== args.id
+        );
+        await ctx.db.patch(permId, { assignedModules: updatedAssignedModules });
+      }
+  
+      return { success: true };
     },
-});
+  });
 export const bulkDeleteModules = mutation({
     args: {
         // An array of module IDs to delete.

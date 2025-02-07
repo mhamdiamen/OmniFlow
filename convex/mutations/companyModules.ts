@@ -52,6 +52,11 @@ export const activateModuleForCompany = mutation({
             await ctx.db.patch(args.companyId, { modules: updatedModules });
         }
 
+        // Increment the activationCount for the module.
+        await ctx.db.patch(args.moduleId, {
+            activationCount: (moduleDoc.activationCount || 0n) + 1n,
+        });
+
         return { success: true, recordId };
     },
 });
@@ -92,6 +97,14 @@ export const deactivateModuleForCompany = mutation({
         if (company.modules.includes(args.moduleId)) {
             const updatedModules = company.modules.filter((id: string) => id !== args.moduleId);
             await ctx.db.patch(args.companyId, { modules: updatedModules });
+        }
+
+        // Decrement the activationCount for the module.
+        const moduleDoc = await ctx.db.get(args.moduleId);
+        if (moduleDoc) {
+            await ctx.db.patch(args.moduleId, {
+                activationCount: (moduleDoc.activationCount || 0n) - 1n,
+            });
         }
 
         return { success: true };
