@@ -38,6 +38,7 @@ import {
 import { DataTablePagination } from "@/components/ModulesManagement/datatable/DataTablePagination";
 import { XCircle } from "lucide-react";
 import { EmptyState } from "@/components/ModulesManagement/components/ReusableEmptyState";
+import AddTeamDialog from "./AddTeamDialog";
 
 // Define the Company and Role types
 type Company = {
@@ -172,7 +173,7 @@ export function UserTable({ users }: UserTableProps) {
           {/* Add any additional user-specific filters here */}
         </div>
 
-        {/* Export and View Options */}
+        {/* Export, View Options, and Add Team Button */}
         <div className="flex items-center space-x-2">
           <ExportButton
             table={table}
@@ -190,6 +191,7 @@ export function UserTable({ users }: UserTableProps) {
                 canHide: column.getCanHide(),
               }))}
           />
+          <AddTeamDialog />
         </div>
       </div>
 

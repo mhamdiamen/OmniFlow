@@ -35,6 +35,7 @@ interface StatusSelectProps {
   options: StatusOption[];
   defaultValue?: string;
   onChange?: (value: string) => void;
+  className?: string; // Add className prop
 }
 
 export default function StatusSelect({
@@ -42,9 +43,10 @@ export default function StatusSelect({
   options,
   defaultValue,
   onChange,
+  className, // Add className prop
 }: StatusSelectProps) {
   return (
-    <div className="space-y-2">
+    <div className={`space-y-2 ${className}`}>
       {label && <Label htmlFor="status-select">{label}</Label>}
       <Select defaultValue={defaultValue} onValueChange={onChange}>
         <SelectTrigger
