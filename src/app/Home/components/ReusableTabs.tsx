@@ -8,21 +8,15 @@ import { api } from "../../../../convex/_generated/api";
 import AppearanceSettings from "./CompanySettings";
 import CompanySettings from "./CompanySettings";
 import ModuleCard from "@/components/ModulesManagement/components/ModuleCard";
-import { UserTable } from "./UserTable";
+import EmailSender from "./EmailSender";
 
 export default function ReusableTabs() {
   const currentUser = useQuery(api.users.CurrentUser); // Fetch current user
-
   const userCompany = useQuery(api.queries.company.getCompanyByOwner); // Fetch company
-
   const modules = useQuery(api.queries.modules.fetchAllModules, {
     companyId: userCompany?._id || undefined, // Pass companyId to the query
   });
 
-  const users = useQuery(
-    api.queries.users.fetchUsersByCompanyId,
-    { companyId: currentUser?.companyId || "" } // Fetch users by company ID
-  );
 
   return (
     <Tabs defaultValue="tab-1">
@@ -84,11 +78,8 @@ export default function ReusableTabs() {
         <p className="pt-1 text-center text-xs text-muted-foreground">Content for Tab 1</p>
       </TabsContent>
       <TabsContent value="tab-2">
-          {users ? (
-            <UserTable users={users} />
-          ) : (
-            <p>Loading users...</p>
-          )}
+       <EmailSender />
+
       </TabsContent>
       <TabsContent value="tab-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

@@ -56,19 +56,18 @@ const schema = defineSchema({
     name: v.string(),
     description: v.optional(v.string()),
     isActiveByDefault: v.boolean(),
-    slug: v.string(),         
-    customRoute: v.string(),  
+    slug: v.string(),
+    customRoute: v.string(),
     permissions: v.array(v.id("permissions")),
-  
+
     // New Enhancements
     category: v.optional(v.string()),       // Category of the module (e.g., "Finance")
     activationCount: v.optional(v.int64()), // How many companies activated this module
     releaseNotes: v.optional(v.string()),   // Notes for module updates & changes
   })
-    .index("slug", ["slug"])  
+    .index("slug", ["slug"])
     .index("category", ["category"])
     .index("activationCount", ["activationCount"]),
-  
 
   // Updated company_modules table:
   company_modules: defineTable({
@@ -93,6 +92,49 @@ const schema = defineSchema({
     assignedRoles: v.array(v.id("roles")),
     assignedModules: v.array(v.id("modules")),
   }),
+  invitations: defineTable({
+    // Core invitation data
+    email: v.string(),
+    token: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("rejected"),
+      v.literal("expired")
+    ),
+
+    // Company and role association
+    companyId: v.id("companies"),
+    roleId: v.id("roles"),
+
+    // Inviter and timestamps
+    invitedBy: v.id("users"),
+    invitedAt: v.float64(),
+    expiresAt: v.float64(),
+
+    // Metadata for tracking
+    acceptedAt: v.optional(v.float64()),
+    rejectedAt: v.optional(v.float64()),
+    metadata: v.optional(v.any()), // For custom permissions or notes
+  })
+    .index("email", ["email"]) // For looking up invitations by email
+    .index("token", ["token"]) // For secure invitation acceptance
+    .index("companyId", ["companyId"]) // For company-specific invitations
+    .index("status", ["status"]) // For filtering by status
+    .index("expiresAt", ["expiresAt"]), // For cleaning up expired invitations
+
+  notifications: defineTable({
+    userId: v.id("users"), // The user who should receive the notification
+    image: v.string(), // URL to the user's avatar
+    user: v.string(), // Name of the user who triggered the notification
+    action: v.string(), // Action performed (e.g., "requested review")
+    target: v.string(), // Target of the action (e.g., "PR #42")
+    timestamp: v.string(), // Timestamp of the notification
+    unread: v.boolean(), // Whether the notification is unread
+  })
+    .index("userId", ["userId"]) // Index by user ID for faster queries
+    .index("unread", ["userId", "unread"]), // Index by unread status for faster queries
+
 });
 
 export default schema;
