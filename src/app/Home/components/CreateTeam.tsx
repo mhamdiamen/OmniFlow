@@ -122,7 +122,9 @@ export function CreateTeamSheet({
                         <div className="flex items-center gap-2">
                           <Avatar className="h-6 w-6">
                             <AvatarImage src={user.image} alt={user.label} />
-                            <AvatarFallback>{user.label[0].toUpperCase()}</AvatarFallback>
+                            <AvatarFallback>
+                              {user.label?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || '?'}
+                            </AvatarFallback>
                           </Avatar>
                           <span>{user.label}</span>
                         </div>

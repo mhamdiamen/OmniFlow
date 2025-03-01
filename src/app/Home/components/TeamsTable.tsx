@@ -43,15 +43,7 @@ import {
 import { Id } from "../../../../convex/_generated/dataModel";
 import { api } from "../../../../convex/_generated/api";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  DialogFooter,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { CreateTeamSheet } from "./CreateTeam";
 
 // Define the Team type based on your schema
 export type Team = {
@@ -74,78 +66,6 @@ export type Team = {
 type TeamsTableProps = {
   companyId: Id<"companies">;
 };
-
-interface CreateTeamDialogProps {
-  companyId: Id<"companies">;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}
-
-function CreateTeamDialog({ companyId, open, onOpenChange }: CreateTeamDialogProps) {
-  const [name, setName] = useState("");
-  const createTeam = useMutation(api.mutations.teams.createTeam);
-  const user = useQuery(api.users.CurrentUser, {}); // Replace with actual user fetching logic
-  const userId: Id<"users"> | undefined = user?._id;
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      if (userId) {
-        await createTeam({
-          name,
-          companyId,
-          members: [], // Initially no additional members
-          createdBy: userId, // Add createdBy field
-        });
-        onOpenChange(false); // Close dialog on success
-        setName(""); // Reset form
-      } else {
-        console.error("User ID is undefined");
-      }
-      onOpenChange(false); // Close dialog on success
-      setName(""); // Reset form
-    } catch (error) {
-      console.error("Failed to create team:", error);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Create New Team</DialogTitle>
-          <DialogDescription>
-            Create a new team. You can add members later.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <label htmlFor="name" className="text-sm font-medium">
-              Team Name
-            </label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter team name"
-              required
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit">Create Team</Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 export function TeamsTable({ companyId }: TeamsTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -198,7 +118,7 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
                     <AvatarImage src={member.image} alt={member.name} />
                   ) : (
                     <AvatarFallback>
-                      {member.name?.charAt(0) || member.email.charAt(0)}
+                      {member.name?.[0]?.toUpperCase() || member.email?.[0]?.toUpperCase() || '?'}
                     </AvatarFallback>
                   )}
                 </Avatar>
@@ -332,7 +252,7 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
         </div>
       </div>
       
-      <CreateTeamDialog
+      <CreateTeamSheet
         companyId={companyId}
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}

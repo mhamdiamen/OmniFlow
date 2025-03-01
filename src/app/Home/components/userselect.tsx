@@ -64,13 +64,22 @@ export default function UserSelect({
           {userOptions.map((option) => (
             <SelectItem key={option.value} value={option.value}>
               <span className="flex items-center gap-2">
-                <img
-                  className="rounded-full"
-                  src={option.image || `/avatar-40-0${Math.min(parseInt(option.value), 3)}.jpg`}
-                  alt={option.label}
-                  width={40}
-                  height={40}
-                />
+                {option.image ? (
+                  <img
+                    className="rounded-full"
+                    src={option.image}
+                    alt={option.label}
+                    width={40}
+                    height={40}
+                  />
+                ) : (
+                  <div 
+                    className="flex items-center justify-center rounded-full bg-primary text-primary-foreground"
+                    style={{ width: 40, height: 40 }}
+                  >
+                    {option.label?.[0]?.toUpperCase() || option.email?.[0]?.toUpperCase() || '?'}
+                  </div>
+                )}
                 <span>
                   <span className="block font-medium">{option.label}</span>
                   <span className="text-muted-foreground mt-0.5 block text-xs">
