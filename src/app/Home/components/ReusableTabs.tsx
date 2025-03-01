@@ -9,6 +9,10 @@ import AppearanceSettings from "./CompanySettings";
 import CompanySettings from "./CompanySettings";
 import ModuleCard from "@/components/ModulesManagement/components/ModuleCard";
 import EmailSender from "./EmailSender";
+import InviteUserForm from "./InviteUserForm";
+import { UserTable } from "./UserTable"; // Import the UserTable component
+import { TeamsTable } from "./TeamsTable"; // Add this import at the top with other imports
+import { Id } from "../../../../convex/_generated/dataModel";
 
 export default function ReusableTabs() {
   const currentUser = useQuery(api.users.CurrentUser); // Fetch current user
@@ -17,7 +21,14 @@ export default function ReusableTabs() {
     companyId: userCompany?._id || undefined, // Pass companyId to the query
   });
 
-
+  // Fetch users by company ID
+  const users = useQuery(api.queries.users.fetchUsersByCompanyId, {
+    companyId: userCompany?._id || "",
+  });
+  const usersWithInvitations = useQuery(
+    api.queries.users.fetchUsersWithInvitationByCompanyId,
+    { companyId: userCompany?._id || "" }
+  );
   return (
     <Tabs defaultValue="tab-1">
       <ScrollArea>
@@ -51,6 +62,18 @@ export default function ReusableTabs() {
             value="tab-3"
             className="relative after:absolute after:inset-x-0 after:bottom-0 after:-mb-1 after:h-0.5 hover:bg-accent hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:bg-primary data-[state=active]:hover:bg-accent"
           >
+            <UsersRound
+              className="-ms-0.5 me-1.5 opacity-60"
+              size={16}
+              strokeWidth={2}
+              aria-hidden="true"
+            />
+            Members
+          </TabsTrigger>
+          <TabsTrigger
+            value="tab-4"
+            className="relative after:absolute after:inset-x-0 after:bottom-0 after:-mb-1 after:h-0.5 hover:bg-accent hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:bg-primary data-[state=active]:hover:bg-accent"
+          >
             <ChartLine
               className="-ms-0.5 me-1.5 opacity-60"
               size={16}
@@ -60,7 +83,7 @@ export default function ReusableTabs() {
             Modules
           </TabsTrigger>
           <TabsTrigger
-            value="tab-4"
+            value="tab-5"
             className="relative after:absolute after:inset-x-0 after:bottom-0 after:-mb-1 after:h-0.5 hover:bg-accent hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:bg-primary data-[state=active]:hover:bg-accent"
           >
             <Settings
@@ -78,10 +101,21 @@ export default function ReusableTabs() {
         <p className="pt-1 text-center text-xs text-muted-foreground">Content for Tab 1</p>
       </TabsContent>
       <TabsContent value="tab-2">
-       <EmailSender />
-
+        {userCompany ? (
+          <TeamsTable companyId={userCompany._id} />
+        ) : (
+          <p>Loading teams...</p>
+        )}
       </TabsContent>
       <TabsContent value="tab-3">
+        {/* Display the UserTable in the Members tab */}
+        {usersWithInvitations ? (
+          <UserTable users={usersWithInvitations} /> // Pass the updated data
+        ) : (
+          <p>Loading users...</p>
+        )}
+      </TabsContent>
+      <TabsContent value="tab-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {modules && userCompany ? (
             modules.map((module) => (
@@ -102,7 +136,7 @@ export default function ReusableTabs() {
           )}
         </div>
       </TabsContent>
-      <TabsContent value="tab-4">
+      <TabsContent value="tab-5">
         <CompanySettings />
       </TabsContent>
     </Tabs>

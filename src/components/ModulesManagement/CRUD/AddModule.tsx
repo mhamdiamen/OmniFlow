@@ -25,7 +25,7 @@ import { GenreInput } from "../components/GenreInput"; // Import GenreInput comp
 import { Tag } from "emblor";
 
 export function AddModule() {
-  const createModule = useMutation(api.mutations.modules.createModule);
+    const createModule = useMutation(api.mutations.modules.createModule);
 
   // Dialog open state.
   const [isOpen, setIsOpen] = useState(false);

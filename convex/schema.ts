@@ -14,7 +14,36 @@ const schema = defineSchema({
     phoneVerificationTime: v.optional(v.float64()),
     companyId: v.optional(v.string()),
     roleId: v.optional(v.string()),
+    teamId: v.optional(v.id("teams")), // Add team association
+
     lastLogin: v.optional(v.float64()),
+    // Professional Profile Fields
+    quote: v.optional(v.string()), // User's personal quote
+
+    jobTitle: v.optional(v.string()),
+    department: v.optional(v.string()),
+    bio: v.optional(v.string()),
+    skills: v.optional(v.array(v.string())),
+    certifications: v.optional(v.array(v.string())),
+    experience: v.optional(v.array(v.object({
+      title: v.string(),
+      company: v.string(),
+      startDate: v.float64(),
+      endDate: v.optional(v.float64()),
+      description: v.optional(v.string()),
+    }))),
+    education: v.optional(v.array(v.object({
+      institution: v.string(),
+      degree: v.string(),
+      fieldOfStudy: v.string(),
+      startDate: v.float64(),
+      endDate: v.optional(v.float64()),
+    }))),
+    socialLinks: v.optional(v.object({
+      linkedin: v.optional(v.string()),
+      twitter: v.optional(v.string()),
+      github: v.optional(v.string()),
+    })),
   })
     .index("email", ["email"])
     .index("companyId", ["companyId"]),
@@ -93,35 +122,26 @@ const schema = defineSchema({
     assignedModules: v.array(v.id("modules")),
   }),
   invitations: defineTable({
-    // Core invitation data
-    email: v.string(),
-    token: v.string(),
+    email: v.string(), // User's email
+    token: v.string(), // Unique invitation token
     status: v.union(
       v.literal("pending"),
       v.literal("accepted"),
       v.literal("rejected"),
       v.literal("expired")
-    ),
+    ), // Invitation status
+    companyId: v.id("companies"), // Admin's company ID
+    invitedBy: v.id("users"), // Admin's user ID
+    invitedAt: v.float64(), // Timestamp of invitation
+    expiresAt: v.float64(), // Expiration timestamp
+    acceptedAt: v.optional(v.number()), // Add this line
 
-    // Company and role association
-    companyId: v.id("companies"),
-    roleId: v.id("roles"),
-
-    // Inviter and timestamps
-    invitedBy: v.id("users"),
-    invitedAt: v.float64(),
-    expiresAt: v.float64(),
-
-    // Metadata for tracking
-    acceptedAt: v.optional(v.float64()),
-    rejectedAt: v.optional(v.float64()),
-    metadata: v.optional(v.any()), // For custom permissions or notes
   })
-    .index("email", ["email"]) // For looking up invitations by email
-    .index("token", ["token"]) // For secure invitation acceptance
-    .index("companyId", ["companyId"]) // For company-specific invitations
-    .index("status", ["status"]) // For filtering by status
-    .index("expiresAt", ["expiresAt"]), // For cleaning up expired invitations
+    .index("email", ["email"]) // Index for looking up invitations by email
+    .index("token", ["token"]) // Index for secure invitation acceptance
+    .index("status", ["status"]) // Index for filtering by status
+    .index("expiresAt", ["expiresAt"]), // Index for cleaning up expired invitations
+
 
   notifications: defineTable({
     userId: v.id("users"), // The user who should receive the notification
@@ -134,6 +154,16 @@ const schema = defineSchema({
   })
     .index("userId", ["userId"]) // Index by user ID for faster queries
     .index("unread", ["userId", "unread"]), // Index by unread status for faster queries
+
+  teams: defineTable({
+    name: v.string(),
+    companyId: v.id("companies"),
+    createdBy: v.id("users"),
+    createdAt: v.float64(),
+    members: v.array(v.id("users")), // Array of user IDs in the team
+  })
+    .index("companyId", ["companyId"])
+    .index("createdBy", ["createdBy"]),
 
 });
 

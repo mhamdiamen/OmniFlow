@@ -28,11 +28,11 @@ import { useAuthActions } from "@convex-dev/auth/react";
 
 export function UserNav() {
   const { signOut } = useAuthActions();
-
+  const router = useRouter(); // Add this line
   const { data, isLoading } = useCurrentUser();
 
   if (isLoading) {
-    return <Loader className="size-4 animate-spin text-muted-foreground" />
+    return <Loader className="size-4 animate-spin text-muted-foreground" />;
   }
 
   if (!data) {
@@ -40,22 +40,18 @@ export function UserNav() {
   }
 
   const { image, name, email, role } = data;
-  const avatarFallback = name!.charAt(0).toUpperCase()
+  const avatarFallback = name!.charAt(0).toUpperCase();
+
   return (
     <DropdownMenu>
       <TooltipProvider disableHoverableContent>
         <Tooltip delayDuration={100}>
           <TooltipTrigger asChild>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                className="relative h-8 w-8 rounded-full"
-              >
+              <Button variant="outline" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8">
                   <AvatarImage alt={name} src={image} />
-                  <AvatarFallback>
-                    {avatarFallback}
-                  </AvatarFallback>
+                  <AvatarFallback>{avatarFallback}</AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
@@ -86,13 +82,14 @@ export function UserNav() {
           </DropdownMenuItem>
           <DropdownMenuItem
             className="hover:cursor-pointer"
+            onClick={() => router.push(`/profile/${data._id}`)} // Redirect to the dynamic profile page
           >
             <User className="w-4 h-4 mr-3 text-muted-foreground" />
             Profile
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="hover:cursor-pointer" onClick={() => signOut()} >
+        <DropdownMenuItem className="hover:cursor-pointer" onClick={() => signOut()}>
           <LogOut className="w-4 h-4 mr-3 text-muted-foreground" />
           Sign out
         </DropdownMenuItem>

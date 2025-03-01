@@ -1,11 +1,16 @@
+// api/send-email/route.ts
+import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 
 export async function POST(req: Request) {
   try {
-    const { email } = await req.json();
+    const { email, token } = await req.json();
 
-    if (!email) {
-      return new Response(JSON.stringify({ error: "Email is required" }), { status: 400 });
+    if (!email || !token) {
+      return NextResponse.json(
+        { error: "Email and token are required" },
+        { status: 400 }
+      );
     }
 
     // Nodemailer Transporter
@@ -23,13 +28,13 @@ export async function POST(req: Request) {
     const info = await transporter.sendMail({
       from: `"Admin" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: "Test Email",
-      html: "<p>Hello! This is a test email from your Next.js app using Nodemailer.</p>",
+      subject: "Invitation to Join Company",
+      html: `<p>You have been invited to join a company. Click <a href="http://localhost:3000/accept-invite/${token}">here</a> to accept the invitation.</p>`,
     });
 
-    return new Response(JSON.stringify({ success: true, info }), { status: 200 });
+    return NextResponse.json({ success: true, info }, { status: 200 });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-    return new Response(JSON.stringify({ error: errorMessage }), { status: 500 });
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
