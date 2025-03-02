@@ -105,6 +105,12 @@ export type UserWithInvitation = {
   certifications?: string[];
   phone?: string;
   bio?: string;
+  invitedBy?: {
+    _id: Id<"users">;
+    name: string;
+    email: string;
+    image?: string;
+  } | null;
 };
 
 type UserTableProps = {
@@ -255,6 +261,33 @@ export function UserTable({ users }: UserTableProps) {
         return (
           <div className="flex items-center">
             <Badge >{roleName || "No Role"}</Badge>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "invitedBy",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Invited By" />,
+      cell: ({ row }) => {
+        const inviter = row.original.invitedBy;
+        return (
+          <div className="flex items-center space-x-2">
+            {inviter ? (
+              <>
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={inviter.image} alt={inviter.name || inviter.email} />
+                  <AvatarFallback>
+                    {inviter.name?.charAt(0).toUpperCase() || inviter.email.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-bold">{inviter.name || "N/A"}</p>
+                  <p className="text-xs text-muted-foreground">{inviter.email}</p>
+                </div>
+              </>
+            ) : (
+              <span className="text-muted-foreground">N/A</span>
+            )}
           </div>
         );
       },
@@ -431,6 +464,15 @@ export function UserTable({ users }: UserTableProps) {
           )}
         </div>
         <div className="flex items-center space-x-2">
+        <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setInviteDialogOpen(true)}
+            className="h-8"
+          >
+            <UserPlus className="mr-2 h-4 w-4" />
+            Invite User
+          </Button>
           <TableViewOptions
             columns={table
               .getAllColumns()
@@ -446,15 +488,7 @@ export function UserTable({ users }: UserTableProps) {
                 canHide: column.getCanHide(),
               }))}
           />
-          <Button
-            variant="default"
-            size="sm"
-            onClick={() => setInviteDialogOpen(true)}
-            className="h-8"
-          >
-            <UserPlus className="mr-2 h-4 w-4" />
-            Invite User
-          </Button>
+          
 
         </div>
       </div>

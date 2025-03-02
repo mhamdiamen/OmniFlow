@@ -1,6 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { Id } from "../_generated/dataModel";
+import { Id, Doc } from "../_generated/dataModel";
 
 // Fetch all teams for a company with member details
 export const fetchTeamsByCompany = query({
@@ -29,29 +29,73 @@ export const fetchTeamsByCompany = query({
         .map(user => [user._id, user])
     );
 
-    return teams.map((team) => ({
-      ...team,
-      memberDetails: team.members
-        .map(memberId => {
-          const member = userMap.get(memberId);
-          if (!member) return null;
-          return {
-            _id: member._id,
-            name: member.name || "N/A",
-            email: member.email,
-            image: member.image,
-          };
-        })
-        .filter((member): member is NonNullable<typeof member> => member !== null),
-      creatorName: team.createdBy ? userMap.get(team.createdBy)?.name || "N/A" : "System",
-      teamLeaderDetails: team.teamLeaderId ? {
-        _id: team.teamLeaderId,
-        name: userMap.get(team.teamLeaderId)?.name || "N/A",
-        email: userMap.get(team.teamLeaderId)?.email || "",
-        image: userMap.get(team.teamLeaderId)?.image,
-      } : null,
-      memberCount: team.members.length,
-    }));
+    // Fetch invitations for this company to get "invited by" information
+    const invitations = await ctx.db
+      .query("invitations")
+      .filter((q) => q.eq(q.field("companyId"), companyId))
+      .collect();
+
+    // Create a map of email to invitation for quick lookup
+    const invitationsByEmail = new Map();
+    for (const invitation of invitations) {
+      if (!invitationsByEmail.has(invitation.email)) {
+        invitationsByEmail.set(invitation.email, []);
+      }
+      invitationsByEmail.get(invitation.email).push(invitation);
+    }
+
+    return teams.map((team) => {
+      // Get the creator details
+      const creator = userMap.get(team.createdBy);
+      
+      return {
+        ...team,
+        memberDetails: team.members
+          .map(memberId => {
+            const member = userMap.get(memberId);
+            if (!member) return null;
+            
+            // Find invitation for this member by email
+            const memberInvitations = member.email ? invitationsByEmail.get(member.email) : [];
+            const latestInvitation = memberInvitations && memberInvitations.length > 0 
+              ? memberInvitations.sort((a: Doc<"invitations">, b: Doc<"invitations">) => b._creationTime - a._creationTime)[0] 
+              : null;
+            
+            // Get inviter details if available
+            const invitedBy = latestInvitation && latestInvitation.invitedBy 
+              ? userMap.get(latestInvitation.invitedBy) 
+              : null;
+            
+            return {
+              _id: member._id,
+              name: member.name || "N/A",
+              email: member.email,
+              image: member.image,
+              invitedBy: invitedBy ? {
+                _id: invitedBy._id,
+                name: invitedBy.name || "N/A",
+                email: invitedBy.email,
+                image: invitedBy.image,
+              } : null,
+            };
+          })
+          .filter((member): member is NonNullable<typeof member> => member !== null),
+        creatorName: creator ? creator.name || "N/A" : "System",
+        creatorDetails: creator ? {
+          _id: creator._id,
+          name: creator.name || "N/A",
+          email: creator.email,
+          image: creator.image,
+        } : null,
+        teamLeaderDetails: team.teamLeaderId ? {
+          _id: team.teamLeaderId,
+          name: userMap.get(team.teamLeaderId)?.name || "N/A",
+          email: userMap.get(team.teamLeaderId)?.email || "",
+          image: userMap.get(team.teamLeaderId)?.image,
+        } : null,
+        memberCount: team.members.length,
+      };
+    });
   },
 });
 
@@ -75,21 +119,64 @@ export const fetchTeamById = query({
         .map(user => [user._id, user])
     );
 
+    // Get the creator details
+    const creator = userMap.get(team.createdBy);
+
+    // Fetch invitations for this team's company to get "invited by" information
+    const invitations = team.companyId ? await ctx.db
+      .query("invitations")
+      .filter((q) => q.eq(q.field("companyId"), team.companyId))
+      .collect()
+      : [];
+
+    // Create a map of email to invitation for quick lookup
+    const invitationsByEmail = new Map();
+    for (const invitation of invitations) {
+      if (!invitationsByEmail.has(invitation.email)) {
+        invitationsByEmail.set(invitation.email, []);
+      }
+      invitationsByEmail.get(invitation.email).push(invitation);
+    }
+
     return {
       ...team,
       memberDetails: team.members
         .map(memberId => {
           const member = userMap.get(memberId);
           if (!member) return null;
+          
+          // Find invitation for this member by email
+          const memberInvitations = member.email ? invitationsByEmail.get(member.email) : [];
+          const latestInvitation = memberInvitations && memberInvitations.length > 0 
+            ? memberInvitations.sort((a: Doc<"invitations">, b: Doc<"invitations">) => b._creationTime - a._creationTime)[0] 
+            : null;
+          
+          // Get inviter details if available
+          const invitedBy = latestInvitation && latestInvitation.invitedBy 
+            ? userMap.get(latestInvitation.invitedBy) 
+            : null;
+          
           return {
             _id: member._id,
             name: member.name || "N/A",
             email: member.email,
             image: member.image,
+            invitedBy: invitedBy ? {
+              _id: invitedBy._id,
+              name: invitedBy.name || "N/A",
+              email: invitedBy.email,
+              image: invitedBy.image,
+            } : null,
           };
         })
         .filter((member): member is NonNullable<typeof member> => member !== null),
-      creatorName: userMap.get(team.createdBy)?.name || "N/A",
+      creatorName: creator ? creator.name || "N/A" : "System",
+      creatorDetails: creator ? {
+        _id: creator._id,
+        name: creator.name || "N/A",
+        email: creator.email,
+        image: creator.image,
+      } : null,
       teamLeaderDetails: team.teamLeaderId ? {
         _id: team.teamLeaderId,
         name: userMap.get(team.teamLeaderId)?.name || "N/A",

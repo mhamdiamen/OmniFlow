@@ -181,6 +181,20 @@ export const fetchUsersWithInvitationByCompanyId = query({
                 
                 // Get the latest invitation
                 const latestInvitation = userInvitations[0] || null;
+                
+                // Get inviter details if available
+                let invitedByDetails = null;
+                if (latestInvitation?.invitedBy) {
+                    const inviter = await ctx.db.get(latestInvitation.invitedBy as Id<"users">);
+                    if (inviter) {
+                        invitedByDetails = {
+                            _id: inviter._id,
+                            name: inviter.name || "N/A",
+                            email: inviter.email,
+                            image: inviter.image
+                        };
+                    }
+                }
 
                 return {
                     ...user,
@@ -188,28 +202,46 @@ export const fetchUsersWithInvitationByCompanyId = query({
                     roleName: role?.name ?? "N/A",
                     invitationStatus: latestInvitation?.status || null,
                     invitationAcceptedAt: latestInvitation?.acceptedAt || null,
+                    invitedBy: invitedByDetails
                 };
             })
         );
 
         // Process invitations without user accounts
-        const pendingInvitationsWithoutUsers = Array.from(invitationsByEmail.entries()).map(([email, invitations]) => {
-            // Sort invitations by creation time (newest first)
-            invitations.sort((a: Doc<"invitations">, b: Doc<"invitations">) => b._creationTime - a._creationTime);
-            
-            // Get the latest invitation
-            const latestInvitation = invitations[0];
-            
-            // Create a pseudo-user entry for each email with pending invitations
-            return {
-                _id: latestInvitation._id as unknown as Id<"users">, // Use the invitation ID as a placeholder
-                email: email,
-                companyId: companyId,
-                companyName: company ? company.name : "N/A",
-                invitationStatus: latestInvitation.status,
-                invitationAcceptedAt: latestInvitation.acceptedAt || null,
-            };
-        });
+        const pendingInvitationsWithoutUsers = await Promise.all(
+            Array.from(invitationsByEmail.entries()).map(async ([email, invitations]) => {
+                // Sort invitations by creation time (newest first)
+                invitations.sort((a: Doc<"invitations">, b: Doc<"invitations">) => b._creationTime - a._creationTime);
+                
+                // Get the latest invitation
+                const latestInvitation = invitations[0];
+                
+                // Get inviter details if available
+                let invitedByDetails = null;
+                if (latestInvitation?.invitedBy) {
+                    const inviter = await ctx.db.get(latestInvitation.invitedBy as Id<"users">);
+                    if (inviter) {
+                        invitedByDetails = {
+                            _id: inviter._id,
+                            name: inviter.name || "N/A",
+                            email: inviter.email,
+                            image: inviter.image
+                        };
+                    }
+                }
+                
+                // Create a pseudo-user entry for each email with pending invitations
+                return {
+                    _id: latestInvitation._id as unknown as Id<"users">, // Use the invitation ID as a placeholder
+                    email: email,
+                    companyId: companyId,
+                    companyName: company ? company.name : "N/A",
+                    invitationStatus: latestInvitation.status,
+                    invitationAcceptedAt: latestInvitation.acceptedAt || null,
+                    invitedBy: invitedByDetails
+                };
+            })
+        );
 
         // Combine both arrays
         return [...usersWithInvitations, ...pendingInvitationsWithoutUsers];

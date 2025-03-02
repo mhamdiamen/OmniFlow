@@ -109,10 +109,12 @@ export function CreateTeamSheet({
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-4">
               <div>
-                <Label htmlFor="team-name">Team Name</Label>
+                <Label className="text-lg font-semibold">Team Name</Label>
+
                 <Input
                   ref={lastInputRef}
                   id="team-name"
+                  className="mt-2"
                   value={teamName}
                   onChange={(e) => setTeamName(e.target.value)}
                   placeholder="Enter team name"
@@ -127,7 +129,7 @@ export function CreateTeamSheet({
                     const user = userOptions.find((u) => u.value === memberId);
                     if (!user) return null;
                     return (
-                      <div key={memberId} className="flex items-center justify-between bg-muted p-2 rounded-md">
+                      <div key={memberId} className="flex items-center justify-between bg-muted p-2 rounded-md mb-3">
                         <div className="flex items-center gap-2">
                           <Avatar className="h-6 w-6">
                             {user.image ? (
@@ -165,7 +167,7 @@ export function CreateTeamSheet({
                         }
                       }}
                       options={userOptions.filter(option => !selectedMembers.includes(option.value))}
-                      label="Add Members"
+                      label="Members"
                     />
                   </div>
                 </div>

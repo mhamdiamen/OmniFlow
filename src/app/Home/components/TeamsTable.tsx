@@ -28,7 +28,7 @@ import { TableViewOptions } from "@/components/RoleManagement/datatable/DataTabl
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/dateUtils";
 import { DataTablePagination } from "@/components/ModulesManagement/datatable/DataTablePagination";
-import { Users, UserPlus, MoreHorizontal, Trash2, Edit, Eye } from "lucide-react";
+import { Users, UserPlus, MoreHorizontal, Trash2, Edit, Eye, XCircle } from "lucide-react";
 import { EmptyState } from "@/components/ModulesManagement/components/ReusableEmptyState";
 import { useQuery, useMutation } from "convex/react";
 import { useState } from "react";
@@ -43,6 +43,7 @@ import {
 import { Id } from "../../../../convex/_generated/dataModel";
 import { api } from "../../../../convex/_generated/api";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { DataTableFacetedFilter } from "@/components/RoleManagement/datatable/DataTableFacetedFilter";
 import { CreateTeamSheet } from "./CreateTeam";
 
 // Define the Team type based on your schema
@@ -55,6 +56,12 @@ export type Team = {
   members: Id<"users">[];
   memberCount: number;
   creatorName: string;
+  creatorDetails?: {
+    _id: Id<"users">;
+    name: string;
+    email: string;
+    image?: string;
+  } | null;
   teamLeaderId?: Id<"users">;
   teamLeaderDetails?: {
     _id: Id<"users">;
@@ -67,6 +74,12 @@ export type Team = {
     name: string;
     email: string;
     image?: string;
+    invitedBy?: {
+      _id: Id<"users">;
+      name: string;
+      email: string;
+      image?: string;
+    } | null;
   }[];
 };
 
@@ -80,6 +93,8 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [selectedCreators, setSelectedCreators] = useState<Set<string>>(new Set());
+  const [selectedTeamLeaders, setSelectedTeamLeaders] = useState<Set<string>>(new Set());
 
   // Fetch teams data
   const teams = useQuery(api.queries.teams.fetchTeamsByCompany, { companyId });
@@ -88,6 +103,42 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
   const createTeam = useMutation(api.mutations.teams.createTeam);
   const deleteTeam = useMutation(api.mutations.teams.deleteTeam);
   const updateTeam = useMutation(api.mutations.teams.updateTeam);
+
+  // Extract unique creators for filtering
+  const uniqueCreators = React.useMemo(() => {
+    const creators = teams?.map((team) => team.creatorName).filter((creator): creator is string => !!creator);
+    const uniqueCreators = Array.from(new Set(creators));
+    return uniqueCreators.map((creator) => ({
+      value: creator,
+      label: creator,
+    }));
+  }, [teams]);
+
+  // Extract unique team leaders for filtering
+  const uniqueTeamLeaders = React.useMemo(() => {
+    const leaders = teams?.map((team) => team.teamLeaderDetails?.name).filter((leader): leader is string => !!leader);
+    const uniqueLeaders = Array.from(new Set(leaders));
+    return uniqueLeaders.map((leader) => ({
+      value: leader,
+      label: leader,
+    }));
+  }, [teams]);
+
+  // Filter teams based on selected creators and team leaders
+  const filteredTeams = React.useMemo(() => {
+    return teams?.filter((team) => {
+      const creatorMatch = selectedCreators.size === 0 || (team.creatorName && selectedCreators.has(team.creatorName));
+      const leaderMatch = selectedTeamLeaders.size === 0 || (team.teamLeaderDetails?.name && selectedTeamLeaders.has(team.teamLeaderDetails.name));
+      return creatorMatch && leaderMatch;
+    }) || [];
+  }, [teams, selectedCreators, selectedTeamLeaders]);
+
+  const resetFilters = () => {
+    setSelectedCreators(new Set());
+    setSelectedTeamLeaders(new Set());
+  };
+
+  const isFiltered = selectedCreators.size > 0 || selectedTeamLeaders.size > 0;
 
   const columns: ColumnDef<Team>[] = [
     {
@@ -190,12 +241,46 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
       },
     },
     {
-      accessorKey: "creatorName",
+      accessorKey: "creatorDetails",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Created By" />
       ),
       cell: ({ row }) => {
-        return <div className="font-medium">{row.original.creatorName}</div>;
+        const creator = row.original.creatorDetails;
+        return (
+          <div className="flex items-center space-x-2">
+            {creator ? (
+              <>
+                {/* Avatar Component */}
+                <Avatar className="h-8 w-8 border-2 border-white">
+                  {creator.image ? (
+                    <AvatarImage 
+                      src={creator.image} 
+                      alt={creator.name}
+                      onError={(e) => {
+                        // If image fails to load, hide it so fallback shows
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  ) : null}
+                  <AvatarFallback>
+                    {creator.email?.[0]?.toUpperCase() || creator.name?.[0]?.toUpperCase() || '?'}
+                  </AvatarFallback>
+                </Avatar>
+        
+                {/* Creator Name and Email */}
+                <div className="flex flex-col">
+                  <span className="font-bold">{creator.name}</span>
+                  <span className="text-xs text-muted-foreground block">
+                    {creator.email || 'Email not available'}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <span className="text-muted-foreground">{row.original.creatorName || "System"}</span>
+            )}
+          </div>
+        );
       },
     },
     {
@@ -249,8 +334,9 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
     },
   ];
 
+  // Create the table instance
   const table = useReactTable({
-    data: teams || [],
+    data: filteredTeams,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -287,6 +373,42 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
             }
             className="max-w-sm"
           />
+          {uniqueCreators.length > 0 && (
+            <DataTableFacetedFilter
+              title="Creators"
+              options={uniqueCreators}
+              selectedValues={selectedCreators}
+              renderOption={(option) => (
+                <div className="flex items-center">
+                  <span>{option.label}</span>
+                </div>
+              )}
+              onChange={setSelectedCreators}
+            />
+          )}
+          {uniqueTeamLeaders.length > 0 && (
+            <DataTableFacetedFilter
+              title="Team Leaders"
+              options={uniqueTeamLeaders}
+              selectedValues={selectedTeamLeaders}
+              renderOption={(option) => (
+                <div className="flex items-center">
+                  <span>{option.label}</span>
+                </div>
+              )}
+              onChange={setSelectedTeamLeaders}
+            />
+          )}
+          {isFiltered && (
+            <Button
+              variant="ghost"
+              onClick={resetFilters}
+              className="h-8 px-2 lg:px-3"
+            >
+              Reset
+              <XCircle className="ml-2 h-4 w-4" />
+            </Button>
+          )}
         </div>
         <div className="flex items-center space-x-2">
           <Button
@@ -294,7 +416,7 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
             className="ml-auto h-8"
             onClick={() => setCreateDialogOpen(true)}
           >
-            <UserPlus className="mr-2 h-4 w-4" />
+            <Users className="mr-2 h-4 w-4" />
             Create Team
           </Button>
           <TableViewOptions 
@@ -318,18 +440,16 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id} style={getCommonPinningStyles(header)}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  );
-                })}
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id} style={getCommonPinningStyles(header)}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </TableHead>
+                ))}
               </TableRow>
             ))}
           </TableHeader>
