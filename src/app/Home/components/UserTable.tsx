@@ -96,7 +96,7 @@ export type UserWithInvitation = {
   image?: string;
   companyId?: string;
   companyName?: string;
-  roleId?: Id<"roles">;
+  roleId?: Id<"roles"> | string; // Accept both Id<"roles"> and string
   roleName?: string;
   invitationStatus: "pending" | "accepted" | "rejected" | "expired" | null;
   invitationAcceptedAt: number | null;
@@ -144,6 +144,7 @@ export function UserTable({ users }: UserTableProps) {
       await updateUserRole({ userId, newRoleId });
       // No need to update local state. Convex will handle it!
     } catch (error) {
+  
       console.error("Failed to update user role:", error);
     }
   };
@@ -376,16 +377,14 @@ export function UserTable({ users }: UserTableProps) {
         />
       )}
 
-      <div className="flex items-center justify-between py-4">
-        {/* Filters */}
-        <div className="flex items-center gap-2">
+      <div className="flex items-center py-4 justify-between">
+        <div className="flex flex-1 items-center space-x-2">
           <Input
             placeholder="Filter by name..."
             value={(table.getColumn("user")?.getFilterValue() as string) || ""}
             onChange={(e) => table.getColumn("user")?.setFilterValue(e.target.value)}
             className="h-8 w-[150px] lg:w-[250px]"
           />
-
           {uniqueRoles.length > 0 && (
             <DataTableFacetedFilter
               title="Roles"
@@ -399,7 +398,6 @@ export function UserTable({ users }: UserTableProps) {
               onChange={setSelectedRoles}
             />
           )}
-
           <DataTableFacetedFilter
             title="Status"
             options={statusOptions}
@@ -414,7 +412,6 @@ export function UserTable({ users }: UserTableProps) {
             )}
             onChange={setSelectedStatuses}
           />
-
           {isFiltered && (
             <Button
               variant="ghost"
@@ -425,17 +422,7 @@ export function UserTable({ users }: UserTableProps) {
               <XCircle className="ml-2 h-4 w-4" />
             </Button>
           )}
-          <Button 
-            variant="default" 
-            size="sm" 
-            onClick={() => setInviteDialogOpen(true)}
-            className="ml-auto"
-          >
-            <UserPlus className="mr-2 h-4 w-4" />
-            Invite User
-          </Button>
         </div>
-
         <div className="flex items-center space-x-2">
           <TableViewOptions
             columns={table
@@ -452,6 +439,15 @@ export function UserTable({ users }: UserTableProps) {
                 canHide: column.getCanHide(),
               }))}
           />
+          <Button 
+            variant="default" 
+            size="sm" 
+            onClick={() => setInviteDialogOpen(true)}
+            className="h-8"
+          >
+            <UserPlus className="mr-2 h-4 w-4" />
+            Invite User
+          </Button>
         </div>
       </div>
 

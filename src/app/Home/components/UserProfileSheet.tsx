@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
+import { toast } from "sonner";
 
 interface UserProfileSheetProps {
     isOpen: boolean;
@@ -27,12 +28,33 @@ export function UserProfileSheet({ isOpen, onClose, user }: UserProfileSheetProp
     const updateUserRole = useMutation(api.mutations.users.updateUserRole);
 
     const handleRoleChange = async (newRoleId: string) => {
-        try {
-            await updateUserRole({ userId: user._id, newRoleId: newRoleId as Id<"roles"> });
-            // No need to update local state. Convex will handle it!
-        } catch (error) {
-            console.error("Failed to update user role:", error);
-        }
+        const updateRolePromise = async () => {
+            try {
+                await updateUserRole({ userId: user._id, newRoleId: newRoleId as Id<"roles"> });
+                return user.name || user.email; // Return user identifier for success message
+            } catch (error) {
+                console.error("Failed to update user role:", error);
+                throw error; // Rethrow for toast.promise error handler
+            }
+        };
+
+        // Use toast.promise to handle loading, success, and error states
+        toast.promise(updateRolePromise(), {
+            loading: `Updating role for ${user.name || user.email}...`,
+            success: (userIdentifier) => `Role updated successfully for ${userIdentifier}`,
+            error: (error) => {
+                const errorMessage = error?.message || "An unknown error occurred";
+                
+                // You can add specific error handling here if needed
+                if (errorMessage.includes("permission denied")) {
+                    return "You don't have permission to update this user's role.";
+                } else if (errorMessage.includes("role not found")) {
+                    return "The selected role could not be found.";
+                } else {
+                    return `Failed to update role: ${errorMessage}`;
+                }
+            },
+        });
     };
 
     return (

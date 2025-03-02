@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server";
-import { Id } from "../_generated/dataModel";
+import { Id, Doc } from "../_generated/dataModel";
 
 export const fetchAllUsers = query({
     handler: async (ctx) => {
@@ -93,7 +93,6 @@ export const fetchUsersByRoleId = query({
     },
 });
 
-
 export const fetchUserAndInvitationByEmail = query({
     args: { email: v.string() },
     handler: async (ctx, args) => {
@@ -132,40 +131,88 @@ export const fetchUserAndInvitationByEmail = query({
     },
 });
 
+// In your Convex backend (e.g., users.ts)
 export const fetchUsersWithInvitationByCompanyId = query({
-    args: { companyId: v.string() },
+    args: {
+        companyId: v.id("companies"),
+    },
     handler: async (ctx, args) => {
+        const { companyId } = args;
+
+        // Fetch all users associated with the company
         const users = await ctx.db
             .query("users")
-            .filter((q) => q.eq(q.field("companyId"), args.companyId))
+            .filter((q) => q.eq(q.field("companyId"), companyId))
             .collect();
 
-        const companyId = ctx.db.normalizeId("companies", args.companyId);
-        const company = companyId ? await ctx.db.get(companyId) : null;
+        // Fetch all invitations for this company
+        const invitations = await ctx.db
+            .query("invitations")
+            .filter((q) => q.eq(q.field("companyId"), companyId))
+            .collect();
 
-        return await Promise.all(
+        // Get company details
+        const company = await ctx.db.get(companyId);
+
+        // Create a map of email to invitations for quick lookup
+        const invitationsByEmail = new Map();
+        invitations.forEach(invitation => {
+            if (!invitationsByEmail.has(invitation.email)) {
+                invitationsByEmail.set(invitation.email, []);
+            }
+            invitationsByEmail.get(invitation.email).push(invitation);
+        });
+
+        // Process existing users with their invitations
+        const usersWithInvitations = await Promise.all(
             users.map(async (user) => {
                 const role = user.roleId
-                    ? await ctx.db.get(user.roleId as Id<"roles">) // Get the entire role object
-                    : null; // Set to null if roleId is missing
+                    ? await ctx.db.get(user.roleId as Id<"roles">)
+                    : null;
 
-                const invitation = await ctx.db
-                    .query("invitations")
-                    .filter((q) => q.eq(q.field("email"), user.email))
-                    .order("desc") // Correct usage
-                    .first();
-
+                // Get the latest invitation for this user by email
+                const userInvitations = invitationsByEmail.get(user.email) || [];
+                
+                // Sort invitations by creation time (newest first)
+                userInvitations.sort((a: Doc<"invitations">, b: Doc<"invitations">) => b._creationTime - a._creationTime);
+                
+                // Remove from map to track processed invitations
+                invitationsByEmail.delete(user.email);
+                
+                // Get the latest invitation
+                const latestInvitation = userInvitations[0] || null;
 
                 return {
                     ...user,
                     companyName: company ? company.name : "N/A",
-                    roleId: role?._id, // Include roleId as Id<"roles"> or undefined
-                    roleName: role?.name ?? "N/A", // Include roleName
-                    invitationStatus: invitation?.status || null,
-                    invitationAcceptedAt: invitation?.acceptedAt || null,
+                    roleName: role?.name ?? "N/A",
+                    invitationStatus: latestInvitation?.status || null,
+                    invitationAcceptedAt: latestInvitation?.acceptedAt || null,
                 };
             })
         );
+
+        // Process invitations without user accounts
+        const pendingInvitationsWithoutUsers = Array.from(invitationsByEmail.entries()).map(([email, invitations]) => {
+            // Sort invitations by creation time (newest first)
+            invitations.sort((a: Doc<"invitations">, b: Doc<"invitations">) => b._creationTime - a._creationTime);
+            
+            // Get the latest invitation
+            const latestInvitation = invitations[0];
+            
+            // Create a pseudo-user entry for each email with pending invitations
+            return {
+                _id: latestInvitation._id as unknown as Id<"users">, // Use the invitation ID as a placeholder
+                email: email,
+                companyId: companyId,
+                companyName: company ? company.name : "N/A",
+                invitationStatus: latestInvitation.status,
+                invitationAcceptedAt: latestInvitation.acceptedAt || null,
+            };
+        });
+
+        // Combine both arrays
+        return [...usersWithInvitations, ...pendingInvitationsWithoutUsers];
     },
 });
 

@@ -161,6 +161,7 @@ const schema = defineSchema({
     createdBy: v.id("users"),
     createdAt: v.float64(),
     members: v.array(v.id("users")), // Array of user IDs in the team
+    teamLeaderId: v.optional(v.id("users")), // Team leader ID
   })
     .index("companyId", ["companyId"])
     .index("createdBy", ["createdBy"]),

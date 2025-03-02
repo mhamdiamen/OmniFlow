@@ -16,9 +16,13 @@ export const fetchTeamsByCompany = query({
     
     // Get creator IDs, filtering out undefined values
     const creatorIds = [...new Set(teams.map((team) => team.createdBy).filter((id): id is Id<"users"> => id !== undefined))];
+    
+    // Get team leader IDs, filtering out undefined values
+    const leaderIds = [...new Set(teams.map((team) => team.teamLeaderId).filter((id): id is Id<"users"> => id !== undefined))];
 
     // Fetch all users in one batch
-    const users = await Promise.all([...memberIds, ...creatorIds].map(id => ctx.db.get(id)));
+    const allUserIds = [...new Set([...memberIds, ...creatorIds, ...leaderIds])];
+    const users = await Promise.all(allUserIds.map(id => ctx.db.get(id)));
     const userMap = new Map(
       users
         .filter((user): user is NonNullable<typeof user> => user !== null)
@@ -40,6 +44,12 @@ export const fetchTeamsByCompany = query({
         })
         .filter((member): member is NonNullable<typeof member> => member !== null),
       creatorName: team.createdBy ? userMap.get(team.createdBy)?.name || "N/A" : "System",
+      teamLeaderDetails: team.teamLeaderId ? {
+        _id: team.teamLeaderId,
+        name: userMap.get(team.teamLeaderId)?.name || "N/A",
+        email: userMap.get(team.teamLeaderId)?.email || "",
+        image: userMap.get(team.teamLeaderId)?.image,
+      } : null,
       memberCount: team.members.length,
     }));
   },
@@ -53,8 +63,12 @@ export const fetchTeamById = query({
     if (!team) return null;
 
     // Fetch all users (members and creator) in one batch
-    const userIds = [...team.members, team.createdBy];
-    const users = await Promise.all(userIds.map(id => ctx.db.get(id)));
+    const userIds = [...team.members];
+    if (team.createdBy) userIds.push(team.createdBy);
+    if (team.teamLeaderId) userIds.push(team.teamLeaderId);
+    
+    const uniqueUserIds = [...new Set(userIds)];
+    const users = await Promise.all(uniqueUserIds.map(id => ctx.db.get(id)));
     const userMap = new Map(
       users
         .filter((user): user is NonNullable<typeof user> => user !== null)
@@ -76,6 +90,12 @@ export const fetchTeamById = query({
         })
         .filter((member): member is NonNullable<typeof member> => member !== null),
       creatorName: userMap.get(team.createdBy)?.name || "N/A",
+      teamLeaderDetails: team.teamLeaderId ? {
+        _id: team.teamLeaderId,
+        name: userMap.get(team.teamLeaderId)?.name || "N/A",
+        email: userMap.get(team.teamLeaderId)?.email || "",
+        image: userMap.get(team.teamLeaderId)?.image,
+      } : null,
       memberCount: team.members.length,
     };
   },

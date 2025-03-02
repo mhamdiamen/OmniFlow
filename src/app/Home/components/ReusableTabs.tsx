@@ -25,10 +25,14 @@ export default function ReusableTabs() {
   const users = useQuery(api.queries.users.fetchUsersByCompanyId, {
     companyId: userCompany?._id || "",
   });
-  const usersWithInvitations = useQuery(
-    api.queries.users.fetchUsersWithInvitationByCompanyId,
-    { companyId: userCompany?._id || "" }
-  );
+  
+  // Only fetch users with invitations when userCompany is available
+  const usersWithInvitations = userCompany 
+    ? useQuery(api.queries.users.fetchUsersWithInvitationByCompanyId, { 
+        companyId: userCompany._id 
+      })
+    : null;
+
   return (
     <Tabs defaultValue="tab-1">
       <ScrollArea>

@@ -16,6 +16,7 @@ import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import UserSelect from "./userselect";
+import { toast } from "sonner";
 
 interface CreateTeamSheetProps {
   companyId: Id<"companies">;
@@ -31,7 +32,7 @@ export function CreateTeamSheet({
   const [teamName, setTeamName] = useState("");
   const [loading, setLoading] = useState(false);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
-  const [teamLeader, setTeamLeader] = useState("1"); // Default value for team leader
+  const [teamLeader, setTeamLeader] = useState(""); // Empty string as initial value
   const lastInputRef = useRef<HTMLInputElement>(null);
 
   const createTeam = useMutation(api.mutations.teams.createTeam);
@@ -50,22 +51,30 @@ export function CreateTeamSheet({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!teamName.trim() || !currentUser?._id) return;
+    if (!teamName.trim() || !currentUser?._id) {
+      toast.error("Please enter a team name");
+      return;
+    }
 
     setLoading(true);
+
     try {
       await createTeam({
         name: teamName,
         companyId,
         members: selectedMembers as Id<"users">[],
         createdBy: currentUser._id,
+        teamLeaderId: teamLeader ? teamLeader as Id<"users"> : undefined,
       });
+
+      toast.success(`Team "${teamName}" created successfully!`);
 
       setTeamName("");
       setSelectedMembers([]);
-      setTeamLeader("1"); // We still reset the UI state
+      setTeamLeader(""); // We still reset the UI state
       onOpenChange(false);
     } catch (error) {
+      toast.error("Failed to create team. Please try again.");
       console.error("Failed to create team:", error);
     } finally {
       setLoading(false);
@@ -74,8 +83,8 @@ export function CreateTeamSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent 
-        className="overflow-y-auto"
+      <SheetContent
+        className="overflow-y-auto sm:max-w-md md:max-w-lg lg:max-w-xl"
         onOpenAutoFocus={(e) => {
           e.preventDefault();
           lastInputRef.current?.focus();
@@ -112,7 +121,7 @@ export function CreateTeamSheet({
               </div>
 
               <div>
-                <Label>Team Members</Label>
+                <Label className="text-lg font-semibold">Team Members</Label>
                 <div className="space-y-2 mt-2">
                   {selectedMembers.map((memberId) => {
                     const user = userOptions.find((u) => u.value === memberId);
@@ -121,16 +130,25 @@ export function CreateTeamSheet({
                       <div key={memberId} className="flex items-center justify-between bg-muted p-2 rounded-md">
                         <div className="flex items-center gap-2">
                           <Avatar className="h-6 w-6">
-                            <AvatarImage src={user.image} alt={user.label} />
+                            {user.image ? (
+                              <AvatarImage
+                                src={user.image}
+                                alt={user.label}
+                                onError={(e) => {
+                                  // If image fails to load, hide it so fallback shows
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            ) : null}
                             <AvatarFallback>
-                              {user.label?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || '?'}
+                              {user.email?.[0]?.toUpperCase() || user.label?.[0]?.toUpperCase() || '?'}
                             </AvatarFallback>
                           </Avatar>
                           <span>{user.label}</span>
                         </div>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => setSelectedMembers(selectedMembers.filter(id => id !== memberId))}
                         >
                           Remove
@@ -138,28 +156,31 @@ export function CreateTeamSheet({
                       </div>
                     );
                   })}
-                  <UserSelect 
-                    value=""
-                    onChange={(value) => {
-                      if (value && !selectedMembers.includes(value)) {
-                        setSelectedMembers([...selectedMembers, value]);
-                      }
-                    }}
-                    options={userOptions.filter(option => !selectedMembers.includes(option.value))}
-                    label="Add Team Member" 
-                  />
+                  <div className="mt-4">
+                    <UserSelect
+                      value=""
+                      onChange={(value) => {
+                        if (value && !selectedMembers.includes(value)) {
+                          setSelectedMembers([...selectedMembers, value]);
+                        }
+                      }}
+                      options={userOptions.filter(option => !selectedMembers.includes(option.value))}
+                      label="Add Members"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <Label>Team Leader</Label>
-                <div className="mt-2">
+              <div className="mt-4">
+                <div>
                   {/* Team leader selection UI - Note: Backend support for team leader is not implemented yet */}
-                  <UserSelect 
-                    value={teamLeader} 
-                    onChange={setTeamLeader} 
-                    options={userOptions}
-                    label="Team Leader" 
+                  <UserSelect
+                    value={teamLeader}
+                    onChange={setTeamLeader}
+                    options={selectedMembers.length > 0
+                      ? userOptions.filter(option => selectedMembers.includes(option.value))
+                      : []}
+                    label="Team Leader"
                   />
                 </div>
               </div>

@@ -14,6 +14,7 @@ import { useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { Ban, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface RevokeUserDialogProps {
     userId: Id<"users">;
@@ -37,12 +38,35 @@ export function RevokeUserDialog({
     const revokeUser = useMutation(api.mutations.users.revokeUserFromCompany);
 
     const handleRevoke = async () => {
-        try {
-            await revokeUser({ userId });
-            onOpenChange(false);
-        } catch (error) {
-            console.error("Failed to revoke user:", error);
-        }
+        const revokePromise = async () => {
+            try {
+                await revokeUser({ userId });
+                // Close the dialog on success
+                onOpenChange(false);
+                return true;
+            } catch (error) {
+                console.error("Failed to revoke user:", error);
+                throw error; // Rethrow for toast.promise error handler
+            }
+        };
+
+        // Use toast.promise to handle loading, success, and error states
+        toast.promise(revokePromise(), {
+            loading: "Revoking user access...",
+            success: () => "User access revoked successfully!",
+            error: (error) => {
+                const errorMessage = error?.message || "An unknown error occurred";
+                
+                // Handle specific error cases if needed
+                if (errorMessage.includes("permission denied")) {
+                    return "You don't have permission to revoke this user's access.";
+                } else if (errorMessage.includes("user not found")) {
+                    return "User not found. They may have already been removed.";
+                } else {
+                    return `Failed to revoke user access: ${errorMessage}`;
+                }
+            },
+        });
     };
 
     return (

@@ -55,6 +55,13 @@ export type Team = {
   members: Id<"users">[];
   memberCount: number;
   creatorName: string;
+  teamLeaderId?: Id<"users">;
+  teamLeaderDetails?: {
+    _id: Id<"users">;
+    name: string;
+    email: string;
+    image?: string;
+  } | null;
   memberDetails: {
     _id: Id<"users">;
     name: string;
@@ -115,12 +122,18 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
               {members.slice(0, displayCount).map((member, i) => (
                 <Avatar key={member._id} className="h-8 w-8 border-2 border-white">
                   {member.image ? (
-                    <AvatarImage src={member.image} alt={member.name} />
-                  ) : (
-                    <AvatarFallback>
-                      {member.name?.[0]?.toUpperCase() || member.email?.[0]?.toUpperCase() || '?'}
-                    </AvatarFallback>
-                  )}
+                    <AvatarImage 
+                      src={member.image} 
+                      alt={member.name}
+                      onError={(e) => {
+                        // If image fails to load, hide it so fallback shows
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  ) : null}
+                  <AvatarFallback>
+                    {member.email?.[0]?.toUpperCase() || member.name?.[0]?.toUpperCase() || '?'}
+                  </AvatarFallback>
                 </Avatar>
               ))}
               {totalCount > displayCount && (
@@ -129,6 +142,49 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
                 </div>
               )}
             </div>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "teamLeaderDetails",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Team Leader" />
+      ),
+      cell: ({ row }) => {
+        const teamLeader = row.original.teamLeaderDetails;
+        return (
+          <div className="flex items-center space-x-2">
+            {teamLeader ? (
+              <>
+                {/* Avatar Component */}
+                <Avatar className="h-8 w-8 border-2 border-white">
+                  {teamLeader.image ? (
+                    <AvatarImage 
+                      src={teamLeader.image} 
+                      alt={teamLeader.name}
+                      onError={(e) => {
+                        // If image fails to load, hide it so fallback shows
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  ) : null}
+                  <AvatarFallback>
+                    {teamLeader.email?.[0]?.toUpperCase() || teamLeader.name?.[0]?.toUpperCase() || '?'}
+                  </AvatarFallback>
+                </Avatar>
+        
+                {/* Team Leader Name and Email */}
+                <div className="flex flex-col"> {/* Ensures vertical stacking */}
+                  <span className="font-bold">{teamLeader.name}</span>
+                  <span className="text-xs text-muted-foreground block">
+                    {teamLeader.email || 'Email not available'}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <span className="text-muted-foreground">Not assigned</span>
+            )}
           </div>
         );
       },

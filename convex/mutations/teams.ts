@@ -10,8 +10,9 @@ export const createTeam = mutation({
     companyId: v.id("companies"),
     members: v.array(v.id("users")),
     createdBy: v.id("users"), // Add createdBy field
+    teamLeaderId: v.optional(v.id("users")), // Add team leader field
   },
-  handler: async (ctx, { name, companyId, members, createdBy }) => {
+  handler: async (ctx, { name, companyId, members, createdBy, teamLeaderId }) => {
     // Ensure the user exists
     const user = await ctx.db.get(createdBy);
     if (!user) {
@@ -24,6 +25,7 @@ export const createTeam = mutation({
       companyId,
       members,
       createdBy,
+      teamLeaderId,
       createdAt: Date.now(),
     });
 
@@ -37,6 +39,7 @@ export const updateTeam = mutation({
     teamId: v.id("teams"),
     name: v.optional(v.string()),
     members: v.optional(v.array(v.id("users"))),
+    teamLeaderId: v.optional(v.id("users")), // Add team leader field
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -63,6 +66,7 @@ export const updateTeam = mutation({
     await ctx.db.patch(args.teamId, {
       ...(args.name && { name: args.name }),
       ...(args.members && { members: args.members }),
+      ...(args.teamLeaderId !== undefined && { teamLeaderId: args.teamLeaderId }),
     });
 
     return { success: true, message: "Team updated successfully" };
