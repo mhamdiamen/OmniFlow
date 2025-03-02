@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input";
 import { DataTableColumnHeader } from "@/components/ModulesManagement/datatable/DataTableColumnHeader";
 import { getCommonPinningStyles } from "@/lib/data-table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { StaticTasksTableFloatingBar } from "@/components/ModulesManagement/components/StaticTasksTableFloatingBar";
+import { UserTableFloatingBar } from "./UserTableFloatingBar";
 import { TableViewOptions } from "@/components/RoleManagement/datatable/DataTableViewOptions";
 import { ExportButton } from "@/components/ui/ExportButton";
 import { Badge } from "@/components/ui/badge";
@@ -75,6 +75,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import InviteUserForm from "./InviteUserForm";
+import BulkDeleteDialog from "./CRUD/BulkDeleteDialog";
 
 // Define the Company and Role types
 type Company = {
@@ -121,6 +122,7 @@ export function UserTable({ users }: UserTableProps) {
   const [selectedRoles, setSelectedRoles] = useState<Set<string>>(new Set());
   const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(new Set());
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [bulkRevokeDialogOpen, setBulkRevokeDialogOpen] = useState(false);
 
   const statusOptions = [
     { value: "pending", label: "Pending", icon: ClockIcon },
@@ -144,7 +146,7 @@ export function UserTable({ users }: UserTableProps) {
       await updateUserRole({ userId, newRoleId });
       // No need to update local state. Convex will handle it!
     } catch (error) {
-  
+
       console.error("Failed to update user role:", error);
     }
   };
@@ -178,6 +180,10 @@ export function UserTable({ users }: UserTableProps) {
   const handleClearSelection = () => {
     setSelectedRows(new Set());
     table.getRowModel().rows.forEach((row) => row.toggleSelected(false));
+  };
+
+  const getSelectedUserIds = (): Id<"users">[] => {
+    return Array.from(selectedRows).map(id => id as Id<"users">);
   };
 
   const columns: ColumnDef<UserWithInvitation>[] = [
@@ -296,8 +302,8 @@ export function UserTable({ users }: UserTableProps) {
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 size="icon"
                 className="relative h-8 w-8 p-0 data-[state=open]:bg-accent"
               >
@@ -307,7 +313,7 @@ export function UserTable({ users }: UserTableProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[180px]">
               <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">User Management</DropdownMenuLabel>
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={() => setSelectedUser(user)}
                 className="cursor-pointer"
               >
@@ -316,7 +322,8 @@ export function UserTable({ users }: UserTableProps) {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">Access Control</DropdownMenuLabel>
-              <DropdownMenuItem 
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
                 onClick={() => {
                   setUserToRevoke(user._id);
                   setRevokeDialogOpen(true);
@@ -353,9 +360,9 @@ export function UserTable({ users }: UserTableProps) {
     <div>
       {/* Floating bar (if any selection is active) */}
       {selectedRows.size > 0 && (
-        <StaticTasksTableFloatingBar table={table} setSelectedRows={setSelectedRows} />
+        <UserTableFloatingBar table={table} setSelectedRows={setSelectedRows} />
       )}
-      
+
       {/* UserProfileSheet Modal */}
       {selectedUser && (
         <UserProfileSheet
@@ -364,7 +371,7 @@ export function UserTable({ users }: UserTableProps) {
           user={selectedUser}
         />
       )}
-      
+
       {/* Revoke User Dialog */}
       {userToRevoke && (
         <RevokeUserDialog
@@ -439,18 +446,18 @@ export function UserTable({ users }: UserTableProps) {
                 canHide: column.getCanHide(),
               }))}
           />
-          <Button 
-            variant="default" 
-            size="sm" 
+          <Button
+            variant="default"
+            size="sm"
             onClick={() => setInviteDialogOpen(true)}
             className="h-8"
           >
             <UserPlus className="mr-2 h-4 w-4" />
             Invite User
           </Button>
+
         </div>
       </div>
-
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -461,9 +468,9 @@ export function UserTable({ users }: UserTableProps) {
                     {header.isPlaceholder
                       ? null
                       : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
                   </TableHead>
                 ))}
               </TableRow>
@@ -514,9 +521,9 @@ export function UserTable({ users }: UserTableProps) {
           </DialogHeader>
           <div className="border rounded-lg p-4 bg-muted/30">
             {currentUser && currentCompany ? (
-              <InviteUserForm 
-                companyId={currentCompany._id} 
-                invitedBy={currentUser._id} 
+              <InviteUserForm
+                companyId={currentCompany._id}
+                invitedBy={currentUser._id}
               />
             ) : (
               <div className="flex items-center justify-center p-6">

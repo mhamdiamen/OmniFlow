@@ -67,6 +67,18 @@ export const revokeUserFromCompany = mutation({
             }
         }
 
+        // Delete all invitations associated with the user's email
+        if (user.email) {
+            const userInvitations = await ctx.db
+                .query("invitations")
+                .filter((q) => q.eq(q.field("email"), user.email))
+                .collect();
+            
+            for (const invitation of userInvitations) {
+                await ctx.db.delete(invitation._id);
+            }
+        }
+
         return {
             success: true,
             message: "User revoked from company and assigned Default role"
@@ -74,6 +86,103 @@ export const revokeUserFromCompany = mutation({
     },
 });
 
+export const bulkRevokeUsersFromCompany = mutation({
+    args: {
+        userIds: v.array(v.id("users")), // Array of user IDs to revoke
+    },
+    handler: async (ctx, args) => {
+        const { userIds } = args;
+        
+        if (userIds.length === 0) {
+            return {
+                success: false,
+                message: "No users specified for revocation",
+                revokedCount: 0
+            };
+        }
+
+        let revokedCount = 0;
+        const errors = [];
+
+        // Get the default role
+        const defaultRole = await ctx.db
+            .query("roles")
+            .filter((q) => q.eq(q.field("name"), "Default"))
+            .first();
+
+        if (!defaultRole) {
+            throw new Error("Default role not found");
+        }
+
+        // Process each user
+        for (const userId of userIds) {
+            try {
+                // Fetch the user to ensure they exist
+                const user = await ctx.db.get(userId);
+                if (!user) {
+                    errors.push(`User with ID ${userId} not found`);
+                    continue;
+                }
+
+                // Check if the user is associated with a company
+                if (!user.companyId) {
+                    errors.push(`User with ID ${userId} is not associated with any company`);
+                    continue;
+                }
+
+                const companyId = user.companyId;
+
+                // Revoke the user by removing companyId and setting roleId to the default role
+                await ctx.db.patch(userId, {
+                    companyId: undefined,
+                    roleId: defaultRole._id
+                });
+
+                // Remove the user from all teams in the company
+                const teams = await ctx.db
+                    .query("teams")
+                    .filter((q) => q.eq(q.field("companyId"), companyId))
+                    .collect();
+
+                for (const team of teams) {
+                    if (team.members.includes(userId)) {
+                        const updatedMembers = team.members.filter((memberId) => memberId !== userId);
+                        await ctx.db.patch(team._id, { members: updatedMembers });
+                    }
+                }
+
+                // Delete all invitations associated with the user's email
+                if (user.email) {
+                    const userInvitations = await ctx.db
+                        .query("invitations")
+                        .filter((q) => q.eq(q.field("email"), user.email))
+                        .collect();
+                    
+                    for (const invitation of userInvitations) {
+                        await ctx.db.delete(invitation._id);
+                    }
+                }
+
+                revokedCount++;
+            } catch (error) {
+                console.error(`Error revoking user ${userId}:`, error);
+                const errorMessage = error instanceof Error 
+                    ? error.message 
+                    : String(error);
+                errors.push(`Failed to revoke user ${userId}: ${errorMessage}`);
+            }
+        }
+
+        return {
+            success: revokedCount > 0,
+            message: errors.length > 0 
+                ? `Revoked ${revokedCount} users with ${errors.length} errors: ${errors.join(', ')}` 
+                : `Successfully revoked ${revokedCount} users`,
+            revokedCount,
+            errors: errors.length > 0 ? errors : undefined
+        };
+    },
+});
 
 export const updateUserProfile = mutation({
     args: {

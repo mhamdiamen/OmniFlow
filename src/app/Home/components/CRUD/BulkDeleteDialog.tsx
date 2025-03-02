@@ -9,19 +9,19 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { CircleAlert } from "lucide-react";
+import { Ban } from "lucide-react";
 import { useMutation } from "convex/react";
-import { api } from "../../../../convex/_generated/api";
 import { useState } from "react";
-import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { api } from "../../../../../convex/_generated/api";
+import { Id } from "../../../../../convex/_generated/dataModel";
 
 interface BulkDeleteDialogProps {
     triggerText: React.ReactNode; // ReactNode for flexible trigger styling
     title: string; // Title of the dialog
     description: React.ReactNode; // Allow JSX elements in description
-    selectedRoleIds: Id<"roles">[]; // Array of selected role IDs to delete
+    selectedUserIds: Id<"users">[]; // Array of selected user IDs to revoke
     cancelText?: string; // Custom text for the cancel button (optional)
     confirmText?: string; // Custom text for the confirm button (optional)
     onSuccess?: () => void; // Callback on successful deletion (optional)
@@ -31,33 +31,58 @@ export default function BulkDeleteDialog({
     triggerText,
     title,
     description,
-    selectedRoleIds,
+    selectedUserIds,
     cancelText = "Cancel",
-    confirmText = "Delete",
+    confirmText = "Revoke Users",
     onSuccess,
 }: BulkDeleteDialogProps) {
-    const [isDeleting, setIsDeleting] = useState(false);
-    const bulkRemoveRoles = useMutation(api.mutations.roles.bulkRemoveRoles);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const bulkRevokeUsers = useMutation(api.mutations.users.bulkRevokeUsersFromCompany);
 
     const handleConfirm = async () => {
-        console.log("Confirm button clicked"); // Log here
-        if (isDeleting || selectedRoleIds.length === 0) return;
+        if (isProcessing) return;
 
-        console.log("Selected Role IDs:", selectedRoleIds); // Log the IDs being passed
+        if (selectedUserIds.length === 0) {
+            toast.error("No users selected for revocation");
+            return;
+        }
 
-        setIsDeleting(true);
+        setIsProcessing(true);
 
         try {
-            const deletedRoleIds = await bulkRemoveRoles({ roleIds: selectedRoleIds });
-            console.log("Response from bulkRemoveRoles:", deletedRoleIds); // Log the response from the API
+            console.log("Revoking users:", selectedUserIds);
+            const revokePromise = async () => {
+                const result = await bulkRevokeUsers({ userIds: selectedUserIds });
+                console.log("Response from bulkRevokeUsers:", result);
+                
+                if (!result.success && result.revokedCount === 0) {
+                    throw new Error(result.message || "Failed to revoke users");
+                }
+                
+                return result;
+            };
 
-            toast.success(`${deletedRoleIds.length} roles deleted successfully.`); // Show success notification
+            // Use toast.promise for better UX
+            await toast.promise(revokePromise(), {
+                loading: "Revoking user access...",
+                success: (result) => {
+                    if (result.errors && result.errors.length > 0) {
+                        return `Revoked ${result.revokedCount} users with some errors. Check console for details.`;
+                    }
+                    return `Successfully revoked ${result.revokedCount} users from the company.`;
+                },
+                error: (error) => {
+                    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+                    return `Failed to revoke users: ${errorMessage}`;
+                },
+            });
+            
             onSuccess?.();
         } catch (error) {
-            console.error("Error deleting roles:", error); // Log errors
-            toast.error("An unexpected error occurred. Please try again."); // Show error notification
+            console.error("Error processing request:", error);
+            toast.error("An unexpected error occurred. Please try again.");
         } finally {
-            setIsDeleting(false);
+            setIsProcessing(false);
         }
     };
 
@@ -70,7 +95,7 @@ export default function BulkDeleteDialog({
                         className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border"
                         aria-hidden="true"
                     >
-                        <CircleAlert className="opacity-80" size={16} strokeWidth={2} />
+                        <Ban className="opacity-80" size={16} strokeWidth={2} />
                     </div>
                     <AlertDialogHeader>
                         <AlertDialogTitle>{title}</AlertDialogTitle>
@@ -78,12 +103,12 @@ export default function BulkDeleteDialog({
                     </AlertDialogHeader>
                 </div>
                 <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isDeleting}>{cancelText}</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleConfirm} disabled={isDeleting}>
-                        {isDeleting ? (
+                    <AlertDialogCancel disabled={isProcessing}>{cancelText}</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleConfirm} disabled={isProcessing}>
+                        {isProcessing ? (
                             <>
                                 <Loader2 className="animate-spin mr-2 h-4 w-4" aria-hidden="true" />
-                                Deleting...
+                                Revoking...
                             </>
                         ) : (
                             confirmText

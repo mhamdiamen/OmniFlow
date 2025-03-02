@@ -26,12 +26,11 @@ export default function ReusableTabs() {
     companyId: userCompany?._id || "",
   });
   
-  // Only fetch users with invitations when userCompany is available
-  const usersWithInvitations = userCompany 
-    ? useQuery(api.queries.users.fetchUsersWithInvitationByCompanyId, { 
-        companyId: userCompany._id 
-      })
-    : null;
+  // Use "skip" to conditionally skip the query when userCompany doesn't exist
+  const usersWithInvitations = useQuery(
+    api.queries.users.fetchUsersWithInvitationByCompanyId, 
+    userCompany ? { companyId: userCompany._id } : "skip"
+  );
 
   return (
     <Tabs defaultValue="tab-1">
@@ -113,7 +112,7 @@ export default function ReusableTabs() {
       </TabsContent>
       <TabsContent value="tab-3">
         {/* Display the UserTable in the Members tab */}
-        {usersWithInvitations ? (
+        {userCompany && usersWithInvitations ? (
           <UserTable users={usersWithInvitations} /> // Pass the updated data
         ) : (
           <p>Loading users...</p>
