@@ -45,6 +45,11 @@ import { api } from "../../../../convex/_generated/api";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DataTableFacetedFilter } from "@/components/RoleManagement/datatable/DataTableFacetedFilter";
 import { CreateTeamSheet } from "./CreateTeam";
+import { UpdateTeamSheet } from "./UpdateTeam"; // Add this line
+import { Checkbox } from "@/components/ui/checkbox";
+import DeleteTeamDialog from "./CRUD/DeleteTeamDialog";
+import BulkDeleteTeamsDialog from "./CRUD/BulkDeleteTeamsDialog"; // Add this line
+import { TeamTableFloatingBar } from "./TeamTableFloatingBar";
 
 // Define the Team type based on your schema
 export type Team = {
@@ -95,6 +100,12 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedCreators, setSelectedCreators] = useState<Set<string>>(new Set());
   const [selectedTeamLeaders, setSelectedTeamLeaders] = useState<Set<string>>(new Set());
+  const [updateDialogOpen, setUpdateDialogOpen] = useState(false); // Add this line
+  const [selectedTeamId, setSelectedTeamId] = useState<Id<"teams"> | null>(null); // Add this line
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false); // Add this line
+  const [deleteTeamId, setDeleteTeamId] = useState<Id<"teams"> | null>(null); // Add this line
+  const [deleteTeamName, setDeleteTeamName] = useState<string>(""); // Add this line
 
   // Fetch teams data
   const teams = useQuery(api.queries.teams.fetchTeamsByCompany, { companyId });
@@ -140,7 +151,57 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
 
   const isFiltered = selectedCreators.size > 0 || selectedTeamLeaders.size > 0;
 
+  const handleClearSelection = () => {
+    setSelectedRows(new Set());
+    table.getRowModel().rows.forEach((row) => row.toggleSelected(false));
+  };
+
+  const getSelectedTeamIds = (): Id<"teams">[] => {
+    return Array.from(selectedRows).map(id => id as Id<"teams">);
+  };
+
   const columns: ColumnDef<Team>[] = [
+    {
+      id: "select",
+      size: 50,
+      minSize: 50,
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected()}
+          onCheckedChange={(value) => {
+            const isChecked = value === true;
+            if (isChecked) {
+              const newSelectedRows = new Set((teams ?? []).map((team) => team._id));
+              setSelectedRows(newSelectedRows);
+              table.getRowModel().rows.forEach((row) => row.toggleSelected(true));
+            } else {
+              handleClearSelection();
+            }
+          }}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => {
+        const teamId = row.original._id;
+        return (
+          <Checkbox
+            checked={selectedRows.has(teamId)}
+            onCheckedChange={(value) => {
+              const isChecked = value === true;
+              const updatedSelectedRows = new Set(selectedRows);
+              if (isChecked) {
+                updatedSelectedRows.add(teamId);
+              } else {
+                updatedSelectedRows.delete(teamId);
+              }
+              setSelectedRows(updatedSelectedRows);
+              row.toggleSelected(isChecked);
+            }}
+            aria-label={`Select ${row.original.name}`}
+          />
+        );
+      },
+    },
     {
       accessorKey: "name",
       header: ({ column }) => (
@@ -315,7 +376,10 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
                 <Eye className="mr-2 h-4 w-4" />
                 View Details
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => {
+                setSelectedTeamId(team._id);
+                setUpdateDialogOpen(true);
+              }}>
                 <Edit className="mr-2 h-4 w-4" />
                 Edit Team
               </DropdownMenuItem>
@@ -323,7 +387,14 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
                 <UserPlus className="mr-2 h-4 w-4" />
                 Add Members
               </DropdownMenuItem>
-              <DropdownMenuItem className="text-red-600">
+              <DropdownMenuItem
+                className="text-red-600"
+                onClick={() => {
+                  setDeleteTeamId(team._id);
+                  setDeleteTeamName(team.name);
+                  setDeleteDialogOpen(true);
+                }}
+              >
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete Team
               </DropdownMenuItem>
@@ -363,6 +434,10 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
 
   return (
     <div className="w-full space-y-4">
+      {/* Floating bar (if any selection is active) */}
+      {selectedRows.size > 0 && (
+        <TeamTableFloatingBar table={table} setSelectedRows={setSelectedRows} />
+      )}
       <div className="flex items-center justify-between">
         <div className="flex flex-1 items-center space-x-2">
           <Input
@@ -435,6 +510,33 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
       />
+      {selectedTeamId && (
+        <UpdateTeamSheet
+          teamId={selectedTeamId}
+          open={updateDialogOpen}
+          onOpenChange={setUpdateDialogOpen}
+        />
+      )}
+      {deleteTeamId && (
+        <DeleteTeamDialog
+          triggerText="Delete Team"
+          title="Delete Team"
+          description={`Are you sure you want to delete the team "${deleteTeamName}"? This action cannot be undone.`}
+          teamId={deleteTeamId}
+          teamName={deleteTeamName}
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+        />
+      )}
+      {selectedRows.size > 0 && (
+        <BulkDeleteTeamsDialog
+          triggerText="Delete Selected Teams"
+          title="Delete Teams"
+          description="Are you sure you want to delete the selected teams? This action cannot be undone."
+          selectedTeamIds={getSelectedTeamIds()}
+          teamIds={getSelectedTeamIds()} // Add this line
+        />
+      )}
       <div className="rounded-md border">
         <Table>
           <TableHeader>

@@ -33,38 +33,29 @@ export const createTeam = mutation({
   },
 });
 
-// Update team details
 export const updateTeam = mutation({
   args: {
     teamId: v.id("teams"),
     name: v.optional(v.string()),
     members: v.optional(v.array(v.id("users"))),
+    teamLeaderId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    // Get the user from the database
-    const user = await ctx.db
-      .query("users")
-      .filter(q => q.eq(q.field("email"), identity.email))
-      .first();
-    
-    if (!user) throw new Error("User not found");
-
     // Get the existing team
     const team = await ctx.db.get(args.teamId);
     if (!team) throw new Error("Team not found");
 
-    // Check if user is the creator or a member
-    if (team.createdBy !== user._id && !team.members.includes(user._id)) {
-      throw new Error("Not authorized to update this team");
+    // Validate teamLeaderId if provided
+    if (args.teamLeaderId) {
+      const teamLeader = await ctx.db.get(args.teamLeaderId);
+      if (!teamLeader) throw new Error("Team leader not found");
     }
 
     // Update the team with new values, keeping existing values if not provided
     await ctx.db.patch(args.teamId, {
       ...(args.name && { name: args.name }),
       ...(args.members && { members: args.members }),
+      ...(args.teamLeaderId && { teamLeaderId: args.teamLeaderId }),
     });
 
     return { success: true, message: "Team updated successfully" };
@@ -152,26 +143,62 @@ export const deleteTeam = mutation({
     teamId: v.id("teams"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    // Get the user from the database
-    const user = await ctx.db
-      .query("users")
-      .filter(q => q.eq(q.field("email"), identity.email))
-      .first();
-    
-    if (!user) throw new Error("User not found");
-
     const team = await ctx.db.get(args.teamId);
     if (!team) throw new Error("Team not found");
 
-    // Only the creator can delete the team
-    if (team.createdBy !== user._id) {
-      throw new Error("Only team creator can delete the team");
-    }
-
     await ctx.db.delete(args.teamId);
     return { success: true, message: "Team deleted successfully" };
+  },
+});
+
+// Bulk delete teams
+export const bulkDeleteTeams = mutation({
+  args: {
+    teamIds: v.array(v.id("teams")), // Array of team IDs to delete
+  },
+  handler: async (ctx, args) => {
+    const { teamIds } = args;
+    
+    if (teamIds.length === 0) {
+      return {
+        success: false,
+        message: "No teams specified for deletion",
+        deletedCount: 0
+      };
+    }
+
+    let deletedCount = 0;
+    const errors = [];
+
+    // Process each team
+    for (const teamId of teamIds) {
+      try {
+        // Fetch the team to ensure it exists
+        const team = await ctx.db.get(teamId);
+        if (!team) {
+          errors.push(`Team with ID ${teamId} not found`);
+          continue;
+        }
+
+        // Delete the team
+        await ctx.db.delete(teamId);
+        deletedCount++;
+      } catch (error) {
+        console.error(`Error deleting team ${teamId}:`, error);
+        const errorMessage = error instanceof Error 
+          ? error.message 
+          : String(error);
+        errors.push(`Failed to delete team ${teamId}: ${errorMessage}`);
+      }
+    }
+
+    return {
+      success: deletedCount > 0,
+      message: errors.length > 0 
+        ? `Deleted ${deletedCount} teams with ${errors.length} errors: ${errors.join(', ')}` 
+        : `Successfully deleted ${deletedCount} teams`,
+      deletedCount,
+      errors: errors.length > 0 ? errors : undefined
+    };
   },
 });

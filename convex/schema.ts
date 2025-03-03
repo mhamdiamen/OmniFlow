@@ -14,12 +14,9 @@ const schema = defineSchema({
     phoneVerificationTime: v.optional(v.float64()),
     companyId: v.optional(v.string()),
     roleId: v.optional(v.string()),
-    teamId: v.optional(v.id("teams")), // Add team association
-
+    teamId: v.optional(v.id("teams")),
     lastLogin: v.optional(v.float64()),
-    // Professional Profile Fields
-    quote: v.optional(v.string()), // User's personal quote
-
+    quote: v.optional(v.string()),
     jobTitle: v.optional(v.string()),
     department: v.optional(v.string()),
     bio: v.optional(v.string()),
@@ -54,10 +51,7 @@ const schema = defineSchema({
     createdAt: v.float64(),
     modules: v.array(v.id("modules")),
     settings: v.optional(v.any()),
-
-    // New fields:
     logoUrl: v.optional(v.string()),
-
     website: v.optional(v.string()),
     phone: v.optional(v.string()),
     email: v.optional(v.string()),
@@ -88,21 +82,18 @@ const schema = defineSchema({
     slug: v.string(),
     customRoute: v.string(),
     permissions: v.array(v.id("permissions")),
-
-    // New Enhancements
-    category: v.optional(v.string()),       // Category of the module (e.g., "Finance")
-    activationCount: v.optional(v.int64()), // How many companies activated this module
-    releaseNotes: v.optional(v.string()),   // Notes for module updates & changes
+    category: v.optional(v.string()),
+    activationCount: v.optional(v.int64()),
+    releaseNotes: v.optional(v.string()),
   })
     .index("slug", ["slug"])
     .index("category", ["category"])
     .index("activationCount", ["activationCount"]),
 
-  // Updated company_modules table:
   company_modules: defineTable({
-    companyId: v.id("companies"),   // Now references the companies table.
-    moduleId: v.id("modules"),      // Already updated.
-    activatedBy: v.id("users"),     // Now references the users table.
+    companyId: v.id("companies"),
+    moduleId: v.id("modules"),
+    activatedBy: v.id("users"),
     activatedAt: v.float64(),
   }).index("companyId", ["companyId", "moduleId"]),
 
@@ -121,51 +112,49 @@ const schema = defineSchema({
     assignedRoles: v.array(v.id("roles")),
     assignedModules: v.array(v.id("modules")),
   }),
+
   invitations: defineTable({
-    email: v.string(), // User's email
-    token: v.string(), // Unique invitation token
+    email: v.string(),
+    token: v.string(),
     status: v.union(
       v.literal("pending"),
       v.literal("accepted"),
       v.literal("rejected"),
       v.literal("expired")
-    ), // Invitation status
-    companyId: v.id("companies"), // Admin's company ID
-    invitedBy: v.id("users"), // Admin's user ID
-    invitedAt: v.float64(), // Timestamp of invitation
-    expiresAt: v.float64(), // Expiration timestamp
-    acceptedAt: v.optional(v.number()), // Add this line
-
+    ),
+    companyId: v.id("companies"),
+    invitedBy: v.id("users"),
+    invitedAt: v.float64(),
+    expiresAt: v.float64(),
+    acceptedAt: v.optional(v.number()),
   })
-    .index("email", ["email"]) // Index for looking up invitations by email
-    .index("token", ["token"]) // Index for secure invitation acceptance
-    .index("status", ["status"]) // Index for filtering by status
-    .index("expiresAt", ["expiresAt"]), // Index for cleaning up expired invitations
-
+    .index("email", ["email"])
+    .index("token", ["token"])
+    .index("status", ["status"])
+    .index("expiresAt", ["expiresAt"]),
 
   notifications: defineTable({
-    userId: v.id("users"), // The user who should receive the notification
-    image: v.string(), // URL to the user's avatar
-    user: v.string(), // Name of the user who triggered the notification
-    action: v.string(), // Action performed (e.g., "requested review")
-    target: v.string(), // Target of the action (e.g., "PR #42")
-    timestamp: v.string(), // Timestamp of the notification
-    unread: v.boolean(), // Whether the notification is unread
+    userId: v.id("users"),
+    image: v.string(),
+    user: v.string(),
+    action: v.string(),
+    target: v.string(),
+    timestamp: v.string(),
+    unread: v.boolean(),
   })
-    .index("userId", ["userId"]) // Index by user ID for faster queries
-    .index("unread", ["userId", "unread"]), // Index by unread status for faster queries
+    .index("userId", ["userId"])
+    .index("unread", ["userId", "unread"]),
 
   teams: defineTable({
     name: v.string(),
     companyId: v.id("companies"),
     createdBy: v.id("users"),
     createdAt: v.float64(),
-    members: v.array(v.id("users")), // Array of user IDs in the team
-    teamLeaderId: v.optional(v.id("users")), // Team leader ID
+    members: v.array(v.id("users")),
+    teamLeaderId: v.optional(v.id("users")),
   })
     .index("companyId", ["companyId"])
     .index("createdBy", ["createdBy"]),
-
 });
 
 export default schema;
