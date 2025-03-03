@@ -48,10 +48,11 @@ export const revokeUserFromCompany = mutation({
             throw new Error("Default role not found");
         }
 
-        // Revoke the user by removing companyId and setting roleId to the default role
+        // Revoke the user by removing companyId, roleId, and teamId
         await ctx.db.patch(userId, {
             companyId: undefined,
-            roleId: defaultRole._id
+            roleId: defaultRole._id,
+            teamId: undefined,
         });
 
         // Remove the user from all teams in the company
@@ -132,10 +133,11 @@ export const bulkRevokeUsersFromCompany = mutation({
 
                 const companyId = user.companyId;
 
-                // Revoke the user by removing companyId and setting roleId to the default role
+                // Revoke the user by removing companyId, roleId, and teamId
                 await ctx.db.patch(userId, {
                     companyId: undefined,
-                    roleId: defaultRole._id
+                    roleId: defaultRole._id,
+                    teamId: undefined,
                 });
 
                 // Remove the user from all teams in the company

@@ -29,6 +29,11 @@ export const createTeam = mutation({
       teamLeaderId, // Add this line
     });
 
+    // Update users with the new teamId
+    for (const memberId of members) {
+      await ctx.db.patch(memberId, { teamId });
+    }
+
     return teamId;
   },
 });
@@ -57,6 +62,20 @@ export const updateTeam = mutation({
       ...(args.members && { members: args.members }),
       ...(args.teamLeaderId && { teamLeaderId: args.teamLeaderId }),
     });
+
+    // Update users with the new teamId
+    if (args.members) {
+      // Clear teamId for users who are no longer members
+      const removedMembers = args.members ? team.members.filter(memberId => !(args.members ?? []).includes(memberId)) : [];
+      for (const memberId of removedMembers) {
+        await ctx.db.patch(memberId, { teamId: undefined });
+      }
+
+      // Set teamId for new members
+      for (const memberId of args.members) {
+        await ctx.db.patch(memberId, { teamId: args.teamId });
+      }
+    }
 
     return { success: true, message: "Team updated successfully" };
   },
@@ -133,6 +152,11 @@ export const removeTeamMembers = mutation({
       members: updatedMembers,
     });
 
+    // Clear teamId for removed members
+    for (const memberId of memberIdsToRemove) {
+      await ctx.db.patch(memberId, { teamId: undefined });
+    }
+
     return { success: true, message: "Members removed successfully" };
   },
 });
@@ -145,6 +169,11 @@ export const deleteTeam = mutation({
   handler: async (ctx, args) => {
     const team = await ctx.db.get(args.teamId);
     if (!team) throw new Error("Team not found");
+
+    // Clear teamId for all members of the team
+    for (const memberId of team.members) {
+      await ctx.db.patch(memberId, { teamId: undefined });
+    }
 
     await ctx.db.delete(args.teamId);
     return { success: true, message: "Team deleted successfully" };
@@ -178,6 +207,11 @@ export const bulkDeleteTeams = mutation({
         if (!team) {
           errors.push(`Team with ID ${teamId} not found`);
           continue;
+        }
+
+        // Clear teamId for all members of the team
+        for (const memberId of team.members) {
+          await ctx.db.patch(memberId, { teamId: undefined });
         }
 
         // Delete the team

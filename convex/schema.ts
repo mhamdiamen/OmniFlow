@@ -155,6 +155,77 @@ const schema = defineSchema({
   })
     .index("companyId", ["companyId"])
     .index("createdBy", ["createdBy"]),
+
+  projects: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    companyId: v.id("companies"),
+    teamId: v.optional(v.id("teams")),
+    projectId: v.optional(v.id("projects")), // Make projectId optional
+    status: v.union(
+      v.literal("planned"),
+      v.literal("in_progress"),
+      v.literal("completed"),
+      v.literal("on_hold"),
+      v.literal("canceled")
+    ),
+    startDate: v.float64(),
+    endDate: v.optional(v.float64()),
+    createdBy: v.id("users"),
+    updatedBy: v.optional(v.id("users")),
+    updatedAt: v.optional(v.float64()),
+  })
+    .index("companyId", ["companyId"])
+    .index("teamId", ["teamId"])
+    .index("status", ["status"]),
+
+  tasks: defineTable({
+    projectId: v.id("projects"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    assigneeId: v.optional(v.id("users")),
+    status: v.union(
+      v.literal("todo"),
+      v.literal("in_progress"),
+      v.literal("completed"),
+      v.literal("on_hold"),
+      v.literal("canceled")
+    ),
+    priority: v.union(
+      v.literal("low"),
+      v.literal("medium"),
+      v.literal("high"),
+      v.literal("urgent")
+    ),
+    dueDate: v.optional(v.float64()),
+    createdBy: v.id("users"),
+    completedAt: v.optional(v.float64()),
+    completedBy: v.optional(v.id("users")),
+  })
+    .index("projectId", ["projectId"])
+    .index("assigneeId", ["assigneeId"])
+    .index("status", ["status"])
+    .index("dueDate", ["dueDate"]),
+
+  milestones: defineTable({
+    projectId: v.id("projects"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    dueDate: v.float64(),
+    status: v.union(
+      v.literal("not_started"),
+      v.literal("in_progress"),
+      v.literal("completed"),
+      v.literal("overdue")
+    ),
+    createdBy: v.id("users"),
+    completedAt: v.optional(v.float64()),
+    completedBy: v.optional(v.id("users")),
+  })
+    .index("projectId", ["projectId"])
+    .index("status", ["status"])
+    .index("dueDate", ["dueDate"]),
 });
+
 
 export default schema;
