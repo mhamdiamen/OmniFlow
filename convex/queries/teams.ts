@@ -92,8 +92,12 @@ export const fetchTeamsByCompany = query({
           name: userMap.get(team.teamLeaderId)?.name || "N/A",
           email: userMap.get(team.teamLeaderId)?.email || "",
           image: userMap.get(team.teamLeaderId)?.image,
+          phone: userMap.get(team.teamLeaderId)?.phone, // Add phone here
         } : null,
         memberCount: team.members.length,
+        description: team.description, // Add this line
+        status: team.status, // Add this line
+        tags: team.tags, // Add this line
       };
     });
   },
@@ -182,8 +186,12 @@ export const fetchTeamById = query({
         name: userMap.get(team.teamLeaderId)?.name || "N/A",
         email: userMap.get(team.teamLeaderId)?.email || "",
         image: userMap.get(team.teamLeaderId)?.image,
+        phone: userMap.get(team.teamLeaderId)?.phone, // Add phone here
       } : null,
       memberCount: team.members.length,
+      description: team.description, // Add this line
+      status: team.status, // Add this line
+      tags: team.tags, // Add this line
     };
   },
 });

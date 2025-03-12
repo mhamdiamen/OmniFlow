@@ -50,6 +50,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import DeleteTeamDialog from "./CRUD/DeleteTeamDialog";
 import BulkDeleteTeamsDialog from "./CRUD/BulkDeleteTeamsDialog"; // Add this line
 import { TeamTableFloatingBar } from "./TeamTableFloatingBar";
+import { ViewTeamDetailsSheet } from "./ViewTeamDetails"; // Add this line
 
 // Define the Team type based on your schema
 export type Team = {
@@ -106,6 +107,8 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false); // Add this line
   const [deleteTeamId, setDeleteTeamId] = useState<Id<"teams"> | null>(null); // Add this line
   const [deleteTeamName, setDeleteTeamName] = useState<string>(""); // Add this line
+  const [viewDetailsDialogOpen, setViewDetailsDialogOpen] = useState(false); // Add this line
+  const [viewDetailsTeamId, setViewDetailsTeamId] = useState<Id<"teams"> | null>(null); // Add this line
 
   // Fetch teams data
   const teams = useQuery(api.queries.teams.fetchTeamsByCompany, { companyId });
@@ -232,7 +235,7 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
           <div className="flex items-center">
             <div className="flex -space-x-2">
               {members.slice(0, displayCount).map((member, i) => (
-                <Avatar key={member._id} className="h-8 w-8 border-2 border-white">
+                <Avatar key={member._id} className="h-8 w-8 border-2 ">
                   {member.image ? (
                     <AvatarImage 
                       src={member.image} 
@@ -270,7 +273,7 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
             {teamLeader ? (
               <>
                 {/* Avatar Component */}
-                <Avatar className="h-8 w-8 border-2 border-white">
+                <Avatar className="h-8 w-8 border-2 ">
                   {teamLeader.image ? (
                     <AvatarImage 
                       src={teamLeader.image} 
@@ -313,7 +316,7 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
             {creator ? (
               <>
                 {/* Avatar Component */}
-                <Avatar className="h-8 w-8 border-2 border-white">
+                <Avatar className="h-8 w-8 border-2 ">
                   {creator.image ? (
                     <AvatarImage 
                       src={creator.image} 
@@ -372,7 +375,10 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
                 Copy Team ID
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => {
+                setViewDetailsTeamId(team._id);
+                setViewDetailsDialogOpen(true);
+              }}>
                 <Eye className="mr-2 h-4 w-4" />
                 View Details
               </DropdownMenuItem>
@@ -535,6 +541,13 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
           description="Are you sure you want to delete the selected teams? This action cannot be undone."
           selectedTeamIds={getSelectedTeamIds()}
           teamIds={getSelectedTeamIds()} // Add this line
+        />
+      )}
+      {viewDetailsTeamId && (
+        <ViewTeamDetailsSheet
+          teamId={viewDetailsTeamId}
+          open={viewDetailsDialogOpen}
+          onOpenChange={setViewDetailsDialogOpen}
         />
       )}
       <div className="rounded-md border">

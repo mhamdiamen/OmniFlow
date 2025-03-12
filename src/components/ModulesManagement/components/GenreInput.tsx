@@ -18,6 +18,7 @@ interface GenreInputProps {
         };
     };
     onTagsChange?: (tags: Tag[]) => void;
+    className?: string; // Add this line to include the className property
 }
 
 export const GenreInput: React.FC<GenreInputProps> = ({
@@ -26,6 +27,7 @@ export const GenreInput: React.FC<GenreInputProps> = ({
     placeholder = "Add a tag",
     styleClasses,
     onTagsChange,
+    className, // Add this line to destructure the className prop
 }) => {
     const [tags, setTags] = useState<Tag[]>(initialTags);
     const [activeTagIndex, setActiveTagIndex] = useState<number | null>(null);
@@ -51,7 +53,7 @@ export const GenreInput: React.FC<GenreInputProps> = ({
                         "border-input rounded-lg bg-background shadow-sm shadow-black/5 transition-shadow focus-within:border-ring focus-within:outline-none focus-within:ring-[3px] focus-within:ring-ring/20 p-1 gap-1",
                     input:
                         styleClasses?.input ||
-                        "w-full min-w-[80px] focus-visible:outline-none shadow-none px-2 h-7",
+                        "w-full focus-visible:outline-none shadow-none px-2 h-7", // Ensure the input is always full width
                     tag: {
                         body:
                             styleClasses?.tag?.body ||
@@ -63,6 +65,7 @@ export const GenreInput: React.FC<GenreInputProps> = ({
                 }}
                 activeTagIndex={activeTagIndex}
                 setActiveTagIndex={setActiveTagIndex}
+                className={className} // Add this line to pass the className prop
             />
         </div>
     );

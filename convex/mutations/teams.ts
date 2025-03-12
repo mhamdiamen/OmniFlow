@@ -11,8 +11,11 @@ export const createTeam = mutation({
     members: v.array(v.id("users")),
     createdBy: v.id("users"), // Add createdBy field
     teamLeaderId: v.optional(v.id("users")), // Add this line
+    description: v.optional(v.string()), // Add this line
+    status: v.optional(v.string()), // Add this line
+    tags: v.optional(v.array(v.string())), // Add this line
   },
-  handler: async (ctx, { name, companyId, members, createdBy, teamLeaderId }) => {
+  handler: async (ctx, { name, companyId, members, createdBy, teamLeaderId, description, status, tags }) => {
     // Ensure the user exists
     const user = await ctx.db.get(createdBy);
     if (!user) {
@@ -27,6 +30,9 @@ export const createTeam = mutation({
       createdBy,
       createdAt: Date.now(),
       teamLeaderId, // Add this line
+      description, // Add this line
+      status, // Add this line
+      tags, // Add this line
     });
 
     // Update users with the new teamId
@@ -44,6 +50,9 @@ export const updateTeam = mutation({
     name: v.optional(v.string()),
     members: v.optional(v.array(v.id("users"))),
     teamLeaderId: v.optional(v.id("users")),
+    description: v.optional(v.string()), // Add this line
+    status: v.optional(v.string()), // Add this line
+    tags: v.optional(v.array(v.string())), // Add this line
   },
   handler: async (ctx, args) => {
     // Get the existing team
@@ -61,6 +70,9 @@ export const updateTeam = mutation({
       ...(args.name && { name: args.name }),
       ...(args.members && { members: args.members }),
       ...(args.teamLeaderId && { teamLeaderId: args.teamLeaderId }),
+      ...(args.description && { description: args.description }), // Add this line
+      ...(args.status && { status: args.status }), // Add this line
+      ...(args.tags && { tags: args.tags }), // Add this line
     });
 
     // Update users with the new teamId

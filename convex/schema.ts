@@ -147,6 +147,9 @@ const schema = defineSchema({
 
   teams: defineTable({
     name: v.string(),
+    description: v.optional(v.string()), // A brief description of the team's purpose or goals
+    status: v.optional(v.string()), // The current status of the team (e.g., "active", "inactive", "archived")
+    tags: v.optional(v.array(v.string())), // Tags or labels for categorizing teams (e.g., "engineering", "marketing", "sales")
     companyId: v.id("companies"),
     createdBy: v.id("users"),
     createdAt: v.float64(),
@@ -154,7 +157,9 @@ const schema = defineSchema({
     teamLeaderId: v.optional(v.id("users")),
   })
     .index("companyId", ["companyId"])
-    .index("createdBy", ["createdBy"]),
+    .index("createdBy", ["createdBy"])
+    .index("status", ["status"]), // Add an index on the status field for faster queries
+
 
   projects: defineTable({
     name: v.string(),
