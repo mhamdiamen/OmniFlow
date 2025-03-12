@@ -51,6 +51,7 @@ import DeleteTeamDialog from "./CRUD/DeleteTeamDialog";
 import BulkDeleteTeamsDialog from "./CRUD/BulkDeleteTeamsDialog"; // Add this line
 import { TeamTableFloatingBar } from "./TeamTableFloatingBar";
 import { ViewTeamDetailsSheet } from "./ViewTeamDetails"; // Add this line
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 // Define the Team type based on your schema
 export type Team = {
@@ -109,6 +110,8 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
   const [deleteTeamName, setDeleteTeamName] = useState<string>(""); // Add this line
   const [viewDetailsDialogOpen, setViewDetailsDialogOpen] = useState(false); // Add this line
   const [viewDetailsTeamId, setViewDetailsTeamId] = useState<Id<"teams"> | null>(null); // Add this line
+  const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(new Set()); // Add this line
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set()); // Add this line
 
   // Fetch teams data
   const teams = useQuery(api.queries.teams.fetchTeamsByCompany, { companyId });
@@ -138,21 +141,45 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
     }));
   }, [teams]);
 
-  // Filter teams based on selected creators and team leaders
+  // Extract unique statuses for filtering
+  const uniqueStatuses = React.useMemo(() => {
+    const statuses = teams?.map((team) => team.status).filter((status): status is string => !!status);
+    const uniqueStatuses = Array.from(new Set(statuses));
+    return uniqueStatuses.map((status) => ({
+      value: status,
+      label: status,
+    }));
+  }, [teams]);
+
+  // Extract unique tags for filtering
+  const uniqueTags = React.useMemo(() => {
+    const tags = teams?.flatMap((team) => team.tags ?? []).filter((tag): tag is string => !!tag);
+    const uniqueTags = Array.from(new Set(tags));
+    return uniqueTags.map((tag) => ({
+      value: tag,
+      label: tag,
+    }));
+  }, [teams]);
+
+  // Filter teams based on selected creators, team leaders, statuses, and tags
   const filteredTeams = React.useMemo(() => {
     return teams?.filter((team) => {
       const creatorMatch = selectedCreators.size === 0 || (team.creatorName && selectedCreators.has(team.creatorName));
       const leaderMatch = selectedTeamLeaders.size === 0 || (team.teamLeaderDetails?.name && selectedTeamLeaders.has(team.teamLeaderDetails.name));
-      return creatorMatch && leaderMatch;
+      const statusMatch = selectedStatuses.size === 0 || (team.status && selectedStatuses.has(team.status));
+      const tagsMatch = selectedTags.size === 0 || (team.tags && team.tags.some(tag => selectedTags.has(tag)));
+      return creatorMatch && leaderMatch && statusMatch && tagsMatch;
     }) || [];
-  }, [teams, selectedCreators, selectedTeamLeaders]);
+  }, [teams, selectedCreators, selectedTeamLeaders, selectedStatuses, selectedTags]);
 
   const resetFilters = () => {
     setSelectedCreators(new Set());
     setSelectedTeamLeaders(new Set());
+    setSelectedStatuses(new Set()); // Add this line
+    setSelectedTags(new Set()); // Add this line
   };
 
-  const isFiltered = selectedCreators.size > 0 || selectedTeamLeaders.size > 0;
+  const isFiltered = selectedCreators.size > 0 || selectedTeamLeaders.size > 0 || selectedStatuses.size > 0 || selectedTags.size > 0; // Update this line
 
   const handleClearSelection = () => {
     setSelectedRows(new Set());
@@ -161,6 +188,15 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
 
   const getSelectedTeamIds = (): Id<"teams">[] => {
     return Array.from(selectedRows).map(id => id as Id<"teams">);
+  };
+
+  const statusOptions: { [key: string]: string } = {
+    "Active": "bg-green-500",
+    "Inactive": "bg-gray-500",
+    "Archived": "bg-red-500",
+    "Planning": "bg-blue-500",
+    "On Hold": "bg-yellow-500",
+    "Completed": "bg-purple-500"
   };
 
   const columns: ColumnDef<Team>[] = [
@@ -204,8 +240,8 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
           />
         );
       },
-    },
-    {
+        },
+        {
       accessorKey: "name",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Team Name" />
@@ -213,15 +249,12 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
       cell: ({ row }) => {
         return (
           <div className="flex items-center space-x-2">
-            <div className="bg-blue-100 p-2 rounded-lg">
-              <Users className="h-4 w-4 text-blue-600" />
-            </div>
-            <span className="font-medium">{row.getValue("name")}</span>
+        <span className="font-bold">{row.getValue("name")}</span>
           </div>
         );
       },
-    },
-    {
+        },
+        {
       accessorKey: "memberDetails",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Members" />
@@ -258,6 +291,21 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
               )}
             </div>
           </div>
+        );
+      },
+    },
+    {
+      accessorKey: "status",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Status" />
+      ),
+      cell: ({ row }) => {
+        const status = row.getValue("status") as string;
+        return (
+          <Badge variant="outline" className="inline-flex items-center gap-2">
+            <span className={`h-2 w-2 rounded-full ${statusOptions[status]}`}></span>
+            {status}
+          </Badge>
         );
       },
     },
@@ -342,6 +390,44 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
               </>
             ) : (
               <span className="text-muted-foreground">{row.original.creatorName || "System"}</span>
+            )}
+          </div>
+        );
+      },
+    },
+ 
+  
+    {
+      accessorKey: "tags",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Tags" />
+      ),
+      cell: ({ row }) => {
+        const tags = row.getValue("tags") as string[];
+        const maxVisibleTags = 1;
+        const visibleTags = tags.slice(0, maxVisibleTags);
+        const remainingTags = tags.slice(maxVisibleTags);
+
+        return (
+          <div className="flex items-center gap-1 overflow-hidden whitespace-nowrap">
+            {visibleTags.map((tag, index) => (
+              <Badge  key={index} className="px-1 py-0.5 text-xs">
+                {tag}
+              </Badge>
+            ))}
+            {remainingTags.length > 0 && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Badge className="px-1 py-0.5 text-xs">
+                      +{remainingTags.length} more
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <span>{remainingTags.join(", ")}</span>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
           </div>
         );
@@ -454,6 +540,32 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
             }
             className="max-w-sm"
           />
+           {uniqueStatuses.length > 0 && (
+            <DataTableFacetedFilter
+              title="Status"
+              options={uniqueStatuses}
+              selectedValues={selectedStatuses}
+              renderOption={(option) => (
+                <div className="flex items-center">
+                  <span>{option.label}</span>
+                </div>
+              )}
+              onChange={setSelectedStatuses}
+            />
+          )}
+          {uniqueTags.length > 0 && (
+            <DataTableFacetedFilter
+              title="Tags"
+              options={uniqueTags}
+              selectedValues={selectedTags}
+              renderOption={(option) => (
+                <div className="flex items-center">
+                  <span>{option.label}</span>
+                </div>
+              )}
+              onChange={setSelectedTags}
+            />
+          )}
           {uniqueCreators.length > 0 && (
             <DataTableFacetedFilter
               title="Creators"
@@ -480,6 +592,7 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
               onChange={setSelectedTeamLeaders}
             />
           )}
+         
           {isFiltered && (
             <Button
               variant="ghost"

@@ -108,7 +108,8 @@ export function ViewTeamDetailsSheet({
                                     {teamDetails?.name || "Untitled Team"}
                                 </h1>
                                 {teamDetails?.status && (
-                                    <Badge className={`ml-4 ${statusOptions[teamDetails.status]}`}>
+                                    <Badge variant="outline" className="inline-flex items-center gap-2 ml-4">
+                                        <span className={`h-2 w-2 rounded-full ${statusOptions[teamDetails.status]}`}></span>
                                         {teamDetails.status}
                                     </Badge>
                                 )}
@@ -145,7 +146,7 @@ export function ViewTeamDetailsSheet({
                                         const user = userOptions.find((u) => u.value === memberId);
                                         if (!user) return null;
                                         return (
-                                            <div key={memberId} className="flex items-start border p-2 rounded-md shadow-md h-auto">
+                                            <div key={memberId} className="flex items-start border p-4 rounded-md shadow-md h-auto">
                                                 <Avatar className="h-16 w-16 rounded-lg mr-2 flex-shrink-0">
                                                     {user.image ? (
                                                         <AvatarImage
@@ -181,7 +182,7 @@ export function ViewTeamDetailsSheet({
                                 <Label className="text-lg font-semibold">Team Leader</Label>
                                 <div className="mt-2">
                                     {teamDetails?.teamLeaderDetails ? (
-                                        <div className="flex items-start border p-2 rounded-md shadow-md h-auto">
+                                        <div className="flex items-start border p-4 rounded-md shadow-md h-auto">
                                             <Avatar className="h-16 w-16 rounded-lg mr-2 flex-shrink-0">
                                                 {teamDetails.teamLeaderDetails.image ? (
                                                     <AvatarImage
