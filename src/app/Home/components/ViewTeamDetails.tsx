@@ -114,7 +114,7 @@ export function ViewTeamDetailsSheet({
                                 )}
                             </div>
                             {teamDetails?.tags && (
-                                <div className="flex flex-wrap gap-2 mt-2 justify-center">
+                                <div className="flex flex-wrap gap-2 mt-2 justify-start">
                                     {teamDetails.tags.map((tag) => (
                                         <Badge key={tag}>
                                             {tag}
