@@ -170,6 +170,11 @@ export const fetchUsersWithInvitationByCompanyId = query({
                     ? await ctx.db.get(user.roleId as Id<"roles">)
                     : null;
 
+                // Exclude users with the "Company Owner" role
+                if (role?.name === "Company Owner") {
+                    return null;
+                }
+
                 // Get the latest invitation for this user by email
                 const userInvitations = invitationsByEmail.get(user.email) || [];
                 
@@ -206,6 +211,9 @@ export const fetchUsersWithInvitationByCompanyId = query({
                 };
             })
         );
+
+        // Filter out null values (users with "Company Owner" role)
+        const filteredUsersWithInvitations = usersWithInvitations.filter(user => user !== null);
 
         // Process invitations without user accounts
         const pendingInvitationsWithoutUsers = await Promise.all(
@@ -244,7 +252,7 @@ export const fetchUsersWithInvitationByCompanyId = query({
         );
 
         // Combine both arrays
-        return [...usersWithInvitations, ...pendingInvitationsWithoutUsers];
+        return [...filteredUsersWithInvitations, ...pendingInvitationsWithoutUsers];
     },
 });
 
