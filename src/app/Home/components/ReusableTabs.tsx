@@ -10,6 +10,7 @@ import ModuleCard from "@/components/ModulesManagement/components/ModuleCard";
 import { UserTable } from "./UserTable";
 import { TeamsTable } from "./TeamsTable";
 import { Id } from "../../../../convex/_generated/dataModel";
+import OverviewCompany from "./OverviewCompany";
 
 export default function ReusableTabs() {
   const currentUser = useQuery(api.users.CurrentUser);
@@ -85,7 +86,7 @@ export default function ReusableTabs() {
       </ScrollArea>
 
       <TabsContent value="tab-1">
-        <p className="text-muted-foreground p-4 pt-1 text-center text-xs">Content for Tab 1</p>
+       <OverviewCompany />
       </TabsContent>
 
       <TabsContent value="tab-2">
