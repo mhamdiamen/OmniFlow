@@ -100,29 +100,28 @@ export const addTeamMembers = mutation({
     memberIds: v.array(v.id("users")),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    // Get the user from the database
-    const user = await ctx.db
-      .query("users")
-      .filter(q => q.eq(q.field("email"), identity.email))
-      .first();
-    
-    if (!user) throw new Error("User not found");
-
+    // Get the team
     const team = await ctx.db.get(args.teamId);
     if (!team) throw new Error("Team not found");
 
-    // Check if user is the creator or a member
-    if (team.createdBy !== user._id && !team.members.includes(user._id)) {
-      throw new Error("Not authorized to modify this team");
+    // Validate that all member IDs exist
+    for (const memberId of args.memberIds) {
+      const member = await ctx.db.get(memberId);
+      if (!member) {
+        throw new Error(`User with ID ${memberId} not found`);
+      }
     }
 
+    // Add the members to the team (avoiding duplicates)
     const updatedMembers = [...new Set([...team.members, ...args.memberIds])];
     await ctx.db.patch(args.teamId, {
       members: updatedMembers,
     });
+
+    // Update users with the team ID
+    for (const memberId of args.memberIds) {
+      await ctx.db.patch(memberId, { teamId: args.teamId });
+    }
 
     return { success: true, message: "Members added successfully" };
   },
