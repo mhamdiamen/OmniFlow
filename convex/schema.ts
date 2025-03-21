@@ -159,7 +159,16 @@ const schema = defineSchema({
     .index("companyId", ["companyId"])
     .index("createdBy", ["createdBy"])
     .index("status", ["status"]), // Add an index on the status field for faster queries
-
+  recentActivity: defineTable({
+    userId: v.id("users"), // The user who performed the action
+    actionType: v.string(), // Type of action (e.g., "invite_user", "update_profile", "activate_module")
+    targetId: v.optional(v.string()), // The ID of the target (e.g., invited user ID, module ID, etc.)
+    targetType: v.optional(v.string()), // The type of target (e.g., "user", "module", "role")
+    description: v.string(), // A human-readable description of the action
+    metadata: v.optional(v.any()), // Additional context or data (e.g., old vs. new values for updates)
+  })
+    .index("userId", ["userId"]) // Index for filtering by user
+    .index("actionType", ["actionType"]), // Index for filtering by action type
 
   projects: defineTable({
     name: v.string(),

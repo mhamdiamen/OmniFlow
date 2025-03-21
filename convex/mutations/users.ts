@@ -1,5 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
+import { getAuthUserId } from "@convex-dev/auth/server";
+import { createActivityForUser } from "./recentActivity";
 
 export const updateUserRole = mutation({
     args: {
@@ -9,23 +11,62 @@ export const updateUserRole = mutation({
     handler: async (ctx, args) => {
         const { userId, newRoleId } = args;
 
+        // Get the authenticated user
+        const adminUserId = await getAuthUserId(ctx);
+        if (!adminUserId) {
+            throw new Error("Not authenticated");
+        }
+
         // Fetch the user to ensure they exist
         const user = await ctx.db.get(userId);
         if (!user) {
             throw new Error("User not found");
         }
 
+        // Get the new role name
+        let roleName = "No Role";
+        if (newRoleId) {
+            const role = await ctx.db.get(newRoleId);
+            if (role) {
+                roleName = role.name;
+            }
+        }
+
         // Update the user's role
         await ctx.db.patch(userId, { roleId: newRoleId });
+
+        // Create activity for the admin who updated the role
+        await createActivityForUser(ctx, {
+            userId: adminUserId,
+            actionType: "Updated User Role",
+            targetId: userId,
+            targetType: "user",
+            description: `Updated role for user "${user.name || user.email}" to "${roleName}"`,
+            metadata: {
+                userId,
+                newRoleId,
+                previousRoleId: user.roleId,
+            },
+        });
+
+
+
         return { success: true, message: "User role updated successfully" };
     },
 });
+
 export const revokeUserFromCompany = mutation({
     args: {
         userId: v.id("users"), // The ID of the user to revoke
     },
     handler: async (ctx, args) => {
         const { userId } = args;
+
+        // Get the authenticated user
+        const adminUserId = await getAuthUserId(ctx);
+        if (!adminUserId) {
+            throw new Error("Not authenticated");
+        }
 
         // Fetch the user to ensure they exist
         const user = await ctx.db.get(userId);
@@ -37,6 +78,10 @@ export const revokeUserFromCompany = mutation({
         if (!user.companyId) {
             throw new Error("User is not associated with any company");
         }
+
+        // Get company details for the activity log
+        const company = user.companyId ? await ctx.db.get(user.companyId as any) : null;
+        const companyName = company && 'name' in company ? company.name : "Unknown Company";
 
         // Get the default role
         const defaultRole = await ctx.db
@@ -74,11 +119,27 @@ export const revokeUserFromCompany = mutation({
                 .query("invitations")
                 .filter((q) => q.eq(q.field("email"), user.email))
                 .collect();
-            
+
             for (const invitation of userInvitations) {
                 await ctx.db.delete(invitation._id);
             }
         }
+
+        // Create activity for the admin who revoked the user
+        await createActivityForUser(ctx, {
+            userId: adminUserId,
+            actionType: "Revoked User",
+            targetId: userId,
+            targetType: "user",
+            description: `Revoked user "${user.name || user.email}" from the company `,
+            metadata: {
+                userId,
+                companyId: user.companyId,
+                previousRoleId: user.roleId,
+            },
+        });
+
+      
 
         return {
             success: true,
@@ -93,7 +154,13 @@ export const bulkRevokeUsersFromCompany = mutation({
     },
     handler: async (ctx, args) => {
         const { userIds } = args;
-        
+
+        // Get the authenticated user
+        const adminUserId = await getAuthUserId(ctx);
+        if (!adminUserId) {
+            throw new Error("Not authenticated");
+        }
+
         if (userIds.length === 0) {
             return {
                 success: false,
@@ -115,21 +182,25 @@ export const bulkRevokeUsersFromCompany = mutation({
             throw new Error("Default role not found");
         }
 
+        const successfullyRevokedUsers = [];
+
         // Process each user
         for (const userId of userIds) {
             try {
-                // Fetch the user to ensure they exist
                 const user = await ctx.db.get(userId);
                 if (!user) {
                     errors.push(`User with ID ${userId} not found`);
                     continue;
                 }
 
-                // Check if the user is associated with a company
                 if (!user.companyId) {
                     errors.push(`User with ID ${userId} is not associated with any company`);
                     continue;
                 }
+
+                // Get company details for the activity log
+                const company = user.companyId ? await ctx.db.get(user.companyId as any) : null;
+                const companyName = company && 'name' in company ? company.name : "Unknown Company";
 
                 const companyId = user.companyId;
 
@@ -159,26 +230,51 @@ export const bulkRevokeUsersFromCompany = mutation({
                         .query("invitations")
                         .filter((q) => q.eq(q.field("email"), user.email))
                         .collect();
-                    
+
                     for (const invitation of userInvitations) {
                         await ctx.db.delete(invitation._id);
                     }
                 }
 
+             
+
+                successfullyRevokedUsers.push({
+                    userId,
+                    name: user.name || user.email,
+                    companyId: user.companyId
+                });
+
                 revokedCount++;
             } catch (error) {
                 console.error(`Error revoking user ${userId}:`, error);
-                const errorMessage = error instanceof Error 
-                    ? error.message 
+                const errorMessage = error instanceof Error
+                    ? error.message
                     : String(error);
                 errors.push(`Failed to revoke user ${userId}: ${errorMessage}`);
             }
         }
 
+        // Create summary activity for the bulk operation
+        if (revokedCount > 0) {
+            await createActivityForUser(ctx, {
+                userId: adminUserId,
+                actionType: "Bulk Revoked Users",
+                targetId: successfullyRevokedUsers[0].companyId,
+                targetType: "company",
+                description: `Bulk revoked ${revokedCount} users from the company`,
+                metadata: {
+                    revokedCount,
+                    errorCount: errors.length,
+                    revokedUsers: successfullyRevokedUsers,
+                    errors: errors.length > 0 ? errors : undefined
+                },
+            });
+        }
+
         return {
             success: revokedCount > 0,
-            message: errors.length > 0 
-                ? `Revoked ${revokedCount} users with ${errors.length} errors: ${errors.join(', ')}` 
+            message: errors.length > 0
+                ? `Revoked ${revokedCount} users with ${errors.length} errors: ${errors.join(', ')}`
                 : `Successfully revoked ${revokedCount} users`,
             revokedCount,
             errors: errors.length > 0 ? errors : undefined
@@ -186,6 +282,7 @@ export const bulkRevokeUsersFromCompany = mutation({
     },
 });
 
+// Remove the activity tracking from updateUserProfile
 export const updateUserProfile = mutation({
     args: {
         userId: v.id("users"),

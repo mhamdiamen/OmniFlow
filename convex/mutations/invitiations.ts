@@ -2,13 +2,14 @@ import { v4 as uuidv4 } from "uuid";
 import { mutation } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
+import { createActivityForUser } from "./recentActivity";
 
 export const inviteUser = mutation({
     args: {
         email: v.string(),
         companyId: v.id("companies"),
         invitedBy: v.id("users"),
-        token: v.string(), // ✅ Ensure `token` is included in expected arguments
+        token: v.string(),
         expiresAt: v.float64(),
     },
     handler: async (ctx, args) => {
@@ -37,6 +38,19 @@ export const inviteUser = mutation({
             expiresAt,
         });
 
+        // Create recent activity using the existing mutation
+        await createActivityForUser(ctx, {
+            userId: invitedBy,
+            actionType: "Invited User ",
+            targetId: user._id,
+            targetType: "user",
+            description: `Invited ${email} to join the company`,
+            metadata: {
+                email,
+                companyId,
+            },
+        });
+
         return { success: true, token };
     },
 });
@@ -44,7 +58,9 @@ export const inviteUser = mutation({
 // convex/invitations.js
 
 
-export const acceptInvitation = mutation(async ({ db }, { token }: { token: string }) => {
+export const acceptInvitation = mutation(async (ctx, { token }: { token: string }) => {
+    const { db } = ctx;
+
     // Fetch the invitation from the database
     const invitation = await db
         .query("invitations")
@@ -71,6 +87,19 @@ export const acceptInvitation = mutation(async ({ db }, { token }: { token: stri
 
     await db.patch(user._id, { companyId: invitation.companyId });
     await db.patch(invitation._id, { status: "accepted", acceptedAt: Date.now() });
+
+    // Create recent activity for the accepting user
+    await createActivityForUser(ctx, {
+        userId: user._id,
+        actionType: "Accepted Invitation",
+        targetId: invitation.companyId,
+        targetType: "company",
+        description: `Accepted the invitation to join the company`,
+        metadata: {
+            invitedBy: invitation.invitedBy,
+            companyId: invitation.companyId,
+        },
+    });
 
     return { success: true };
 });

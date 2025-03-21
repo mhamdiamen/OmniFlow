@@ -85,3 +85,31 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+.scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+
+.custom-timeline .ant-timeline-item-tail {
+  border-left: 2px solid;
+  border-color: hsl(var(--border)) !important;
+  position: absolute;
+  top: 10px;
+  bottom: 0;
+  left: 4px;
+}
+
+.custom-timeline .ant-timeline-item-head {
+  background-color: hsl(var(--background));
+  border-color: hsl(var(--primary)) !important;
+}
+
+.custom-timeline .ant-timeline-item-head-blue {
+  background-color: hsl(var(--primary)) !important;
+  border-color: hsl(var(--primary)) !important;
+}

@@ -294,3 +294,15 @@ export const getUserById = query({
         };
     },
 });
+
+export const getUsersByIds = query({
+  args: {
+    userIds: v.array(v.id("users"))
+  },
+  handler: async (ctx, args) => {
+    const users = await Promise.all(
+      args.userIds.map(userId => ctx.db.get(userId))
+    );
+    return users.filter((user): user is Doc<"users"> => user !== null);
+  }
+});
