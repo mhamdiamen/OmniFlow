@@ -1,6 +1,5 @@
 "use client";
-// Remove the CreateProject import
-// import { CreateProject } from "./components/CreateProject";
+
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import AdminPanelLayout from "@/components/admin-panel/admin-panel-layout";
@@ -9,9 +8,20 @@ import { ProjectsTable } from "./components/ProjectsTable";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import Link from "next/link";
+import { Id } from "../../../../convex/_generated/dataModel";
 
 export default function ProjectsPage() {
-  const projectsQuery = useQuery(api.queries.projects.fetchAllProjects, {});
+  // First, get the current user to access their company ID
+  const currentUserQuery = useQuery(api.users.CurrentUser);
+
+  // Then use the company ID to fetch projects, or skip if not available
+  const projectsQuery = useQuery(
+    api.queries.projects.fetchProjectsByCompany,
+    currentUserQuery?.companyId as Id<"companies">
+      ? { companyId: currentUserQuery?.companyId as Id<"companies"> }
+      : "skip"
+  );
+
   const projects = projectsQuery || [];
 
   return (

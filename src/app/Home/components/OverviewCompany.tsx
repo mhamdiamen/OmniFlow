@@ -195,16 +195,7 @@ export default function OverviewCompany() {
                                         ),
                                     }))}
                                 />
-                                {recentActivities && filterActivitiesByTime(recentActivities, 'yesterday').length > visibleCount && (
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="w-full mt-2"
-                                        onClick={() => setVisibleCount(prev => prev + 5)}
-                                    >
-                                        Load More
-                                    </Button>
-                                )}
+                          
                             </TabsContent>
 
                             <TabsContent value="week">
@@ -221,16 +212,7 @@ export default function OverviewCompany() {
                                         ),
                                     }))}
                                 />
-                                {recentActivities && filterActivitiesByTime(recentActivities, 'week').length > visibleCount && (
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="w-full mt-2"
-                                        onClick={() => setVisibleCount(prev => prev + 5)}
-                                    >
-                                        Load More
-                                    </Button>
-                                )}
+                             
                             </TabsContent>
 
                             <TabsContent value="all">

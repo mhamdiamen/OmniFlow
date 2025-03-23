@@ -3,7 +3,7 @@
 
 import { Label } from "@/components/ui/label";
 import { Tag, TagInput } from "emblor";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface GenreInputProps {
     id: string;
@@ -18,7 +18,7 @@ interface GenreInputProps {
         };
     };
     onTagsChange?: (tags: Tag[]) => void;
-    className?: string; // Add this line to include the className property
+    className?: string;
 }
 
 export const GenreInput: React.FC<GenreInputProps> = ({
@@ -27,10 +27,17 @@ export const GenreInput: React.FC<GenreInputProps> = ({
     placeholder = "Add a tag",
     styleClasses,
     onTagsChange,
-    className, // Add this line to destructure the className prop
+    className,
 }) => {
     const [tags, setTags] = useState<Tag[]>(initialTags);
     const [activeTagIndex, setActiveTagIndex] = useState<number | null>(null);
+
+    // Add this useEffect to update tags when initialTags prop changes
+    useEffect(() => {
+        if (initialTags && initialTags.length > 0) {
+            setTags(initialTags);
+        }
+    }, [initialTags]);
 
     const handleSetTags = (value: React.SetStateAction<Tag[]>) => {
         const newTags = typeof value === "function" ? value(tags) : value;
@@ -45,7 +52,7 @@ export const GenreInput: React.FC<GenreInputProps> = ({
             <TagInput
                 id={id}
                 tags={tags}
-                setTags={handleSetTags} // Use the wrapper function
+                setTags={handleSetTags}
                 placeholder={placeholder}
                 styleClasses={{
                     inlineTagsContainer:
@@ -65,7 +72,7 @@ export const GenreInput: React.FC<GenreInputProps> = ({
                 }}
                 activeTagIndex={activeTagIndex}
                 setActiveTagIndex={setActiveTagIndex}
-                className={className} // Add this line to pass the className prop
+                className={className}
             />
         </div>
     );

@@ -226,3 +226,76 @@ export const fetchUserTeams = query({
     }));
   },
 });
+
+// Add this function to the existing teams.ts file
+
+// Fetch team with associated projects
+export const fetchTeamWithProjects = query({
+  args: { teamId: v.id("teams") },
+  handler: async (ctx, { teamId }) => {
+    const team = await ctx.db.get(teamId);
+    if (!team) return null;
+
+    // Fetch all projects for this team
+    const projects = await ctx.db
+      .query("projects")
+      .withIndex("teamId", (q) => q.eq("teamId", teamId))
+      .collect();
+
+    // Fetch all users (members and creator) in one batch
+    const userIds = [...team.members];
+    if (team.createdBy) userIds.push(team.createdBy);
+    if (team.teamLeaderId) userIds.push(team.teamLeaderId);
+    
+    const uniqueUserIds = [...new Set(userIds)];
+    const users = await Promise.all(uniqueUserIds.map(id => ctx.db.get(id)));
+    const userMap = new Map(
+      users
+        .filter((user) => user !== null)
+        .map(user => [user!._id, user])
+    );
+
+    // Get the creator details
+    const creator = team.createdBy ? userMap.get(team.createdBy) : null;
+
+    return {
+      ...team,
+      memberDetails: team.members
+        .map(memberId => {
+          const member = userMap.get(memberId);
+          if (!member) return null;
+          
+          return {
+            _id: member._id,
+            name: member.name || "N/A",
+            email: member.email,
+            image: member.image,
+          };
+        })
+        .filter((member) => member !== null),
+      creatorName: creator ? creator.name || "N/A" : "System",
+      creatorDetails: creator ? {
+        _id: creator._id,
+        name: creator.name || "N/A",
+        email: creator.email,
+        image: creator.image,
+      } : null,
+      teamLeaderDetails: team.teamLeaderId && userMap.get(team.teamLeaderId) ? {
+        _id: team.teamLeaderId,
+        name: userMap.get(team.teamLeaderId)?.name || "N/A",
+        email: userMap.get(team.teamLeaderId)?.email || "",
+        image: userMap.get(team.teamLeaderId)?.image,
+      } : null,
+      memberCount: team.members.length,
+      projects: projects.map(project => ({
+        _id: project._id,
+        name: project.name,
+        description: project.description,
+        status: project.status,
+        startDate: project.startDate,
+        endDate: project.endDate,
+      })),
+      projectCount: projects.length,
+    };
+  },
+});

@@ -498,6 +498,7 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
                 <UserPlus className="mr-2 h-4 w-4" />
                 <span>Add Members</span>
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
 
               <DropdownMenuItem
                 className="cursor-pointer "

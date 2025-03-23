@@ -28,7 +28,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { StaticTasksTableFloatingBar } from "@/components/RoleManagement/components/StaticTasksTableFloatingBar";
 import { TableViewOptions } from "@/components/RoleManagement/datatable/DataTableViewOptions";
 import { ExportButton } from "@/components/ui/ExportButton";
-import { Plus, XCircle } from "lucide-react";
+import { Calendar, Plus, XCircle } from "lucide-react";
 import { DataTableFacetedFilter } from "@/components/RoleManagement/datatable/DataTableFacetedFilter";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
@@ -41,7 +41,20 @@ import { CreateProject } from "./CreateProject";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import Link from "next/link";
-
+import { formatDate } from "@/lib/dateUtils";
+import DeleteProjectDialog from "./DeleteProjectDialog";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreHorizontal, Edit, Eye, Trash2 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useState } from "react";
+import { ProjectsTableFloatingBar } from "./ProjectsTableFloatingBar";
 export type Project = {
     _id: string;
     name: string;
@@ -55,8 +68,25 @@ export type Project = {
     createdBy: string;
     updatedBy?: string;
     updatedAt?: number;
+    teamDetails?: {
+        _id: string;
+        name: string;
+    } | null;
+    creatorDetails?: {
+        _id: string;
+        name: string;
+        email: string;
+        image?: string;
+    } | null;
+    // Add the missing fields from schema.ts
+    tags?: string[];
+    category?: string;
+    healthStatus?: "on_track" | "at_risk" | "off_track";
+    priority?: "low" | "medium" | "high" | "critical";
+    progress?: number;
+    completedTasks?: number;
+    totalTasks?: number;
 };
-
 type ProjectsTableProps = {
     projects: Project[];
 };
@@ -70,14 +100,16 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
     const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
     const [selectedRows, setSelectedRows] = React.useState<Set<string>>(new Set());
     const [selectedStatus, setSelectedStatus] = React.useState<Set<string>>(new Set());
+    const [selectedCategories, setSelectedCategories] = React.useState<Set<string>>(new Set());
+    const [selectedTags, setSelectedTags] = React.useState<Set<string>>(new Set());
     const [dateRange, setDateRange] = React.useState<{ from: Date | undefined; to: Date | undefined }>({
         from: undefined,
         to: undefined,
     });
 
     // Determine if any filters are applied
-    const isFiltered = selectedStatus.size > 0;
-    
+    const isFiltered = selectedStatus.size > 0 || selectedCategories.size > 0 || selectedTags.size > 0;
+
     // Extract unique statuses for filtering
     const uniqueStatuses = React.useMemo(() => {
         const statuses = Array.from(new Set(projects.map(project => project.status)));
@@ -86,20 +118,64 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
             label: status.replace('_', ' ').charAt(0).toUpperCase() + status.replace('_', ' ').slice(1),
         }));
     }, [projects]);
-    
-    // Filter projects based on selected status
+
+    // Extract unique categories for filtering
+    const uniqueCategories = React.useMemo(() => {
+        const categories = Array.from(new Set(projects.map(project => project.category).filter(Boolean)));
+        return categories.map((category) => ({
+            value: category,
+            label: category,
+        }));
+    }, [projects]);
+
+    // Extract unique tags for filtering
+    const uniqueTags = React.useMemo(() => {
+        const allTags = new Set<string>();
+        projects.forEach(project => {
+            if (Array.isArray(project.tags)) {
+                project.tags.forEach(tag => allTags.add(tag));
+            }
+        });
+        return Array.from(allTags).map(tag => ({
+            value: tag,
+            label: tag,
+        }));
+    }, [projects]);
+
+    // Filter projects based on selected filters
     const filteredProjects = React.useMemo(() => {
         return projects.filter((project) => {
-            // If no status is selected, include all projects
-            if (selectedStatus.size === 0) return true;
+            // Status filter
+            if (selectedStatus.size > 0 && !selectedStatus.has(project.status)) {
+                return false;
+            }
 
-            // Check if the project status is in the selected statuses
-            return selectedStatus.has(project.status);
+            // Category filter
+            if (selectedCategories.size > 0 && (!project.category || !selectedCategories.has(project.category))) {
+                return false;
+            }
+
+            // Tags filter
+            if (selectedTags.size > 0) {
+                if (!Array.isArray(project.tags) || project.tags.length === 0) {
+                    return false;
+                }
+
+                // Check if any of the project's tags are in the selected tags
+                const hasSelectedTag = project.tags.some(tag => selectedTags.has(tag));
+                if (!hasSelectedTag) {
+                    return false;
+                }
+            }
+
+            return true;
         });
-    }, [projects, selectedStatus]);
+    }, [projects, selectedStatus, selectedCategories, selectedTags]);
 
     const resetFilters = () => {
         setSelectedStatus(new Set());
+        setSelectedCategories(new Set());
+        setSelectedTags(new Set());
     };
 
     // Function to clear selected rows
@@ -107,7 +183,7 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
         setSelectedRows(new Set());
         table.getRowModel().rows.forEach((row) => row.toggleSelected(false));
     };
-    
+
     // Fetch user details for creators and updaters
     const userIds = React.useMemo(() => {
         const ids = new Set<string>();
@@ -117,14 +193,17 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
         });
         return Array.from(ids);
     }, [projects]);
-    
+
     const users = useQuery(api.queries.users.getUsersByIds, {
         userIds: userIds as Id<"users">[]
     }) || [];
-    
+
     // Create a map of user IDs to user names
     const userMap = new Map(users.map(user => [user._id, user.name || user.email]));
-    
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [deleteProjectId, setDeleteProjectId] = useState<Id<"projects"> | null>(null);
+    const [deleteProjectName, setDeleteProjectName] = useState<string>("");
+
     const columns: ColumnDef<Project>[] = [
         {
             id: "select",
@@ -170,13 +249,20 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
         {
             accessorKey: "name",
             header: ({ column }) => (
-                <DataTableColumnHeader column={column} title="Name" />
+                <DataTableColumnHeader column={column} title="Project Name" />
             ),
-            cell: ({ row }) => (
-                <span className="font-bold">{row.original.name}</span>
-            ),
+            cell: ({ row }) => {
+                const name = row.getValue("name") as string;
+                return (
+                    <div className="flex items-center space-x-2">
+                        <span className="font-bold truncate max-w-[200px]" title={name}>
+                            {name.length > 25 ? `${name.substring(0, 20)}...` : name}
+                        </span>
+                    </div>
+                );
+            },
         },
-        {
+        /* {
             accessorKey: "description",
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Description" />
@@ -187,28 +273,53 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
                 const truncatedText = text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
                 return <span title={text}>{truncatedText}</span>;
             },
-        },
+        }, */
         {
             accessorKey: "status",
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Status" />
             ),
             cell: ({ row }) => {
-                const status = row.original.status;
+                const status = row.getValue("status") as string;
+                // Match status colors with create project page
                 const statusColors: Record<string, string> = {
-                    planned: "bg-blue-100 text-blue-800",
-                    in_progress: "bg-yellow-100 text-yellow-800",
-                    completed: "bg-green-100 text-green-800",
-                    on_hold: "bg-gray-100 text-gray-800",
-                    canceled: "bg-red-100 text-red-800",
+                    "planned": "bg-blue-500",
+                    "in_progress": "bg-green-500",
+                    "completed": "bg-purple-500",
+                    "on_hold": "bg-amber-500",
+                    "canceled": "bg-red-500"
                 };
-                
-                const displayStatus = status.replace('_', ' ').charAt(0).toUpperCase() + status.replace('_', ' ').slice(1);
-                
+
+                const statusLabels: Record<string, string> = {
+                    "planned": "Planned",
+                    "in_progress": "In Progress",
+                    "completed": "Completed",
+                    "on_hold": "On Hold",
+                    "canceled": "Canceled"
+                };
+
                 return (
-                    <Badge className={`${statusColors[status]} px-2 py-1`}>
-                        {displayStatus}
+                    <Badge variant="outline" className="inline-flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded-full ${statusColors[status] || "bg-gray-500"} flex-shrink-0`}></div>
+                        <span>{statusLabels[status] || status}</span>
                     </Badge>
+                );
+            },
+        },
+        {
+            accessorKey: "teamId",
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title="Team" />
+            ),
+            cell: ({ row }) => {
+                // Use the teamDetails that are returned from the API
+                const project = row.original as any; // Using any to access the teamDetails property
+                const teamDetails = project.teamDetails;
+
+                return teamDetails ? (
+                    <span className="font-bold">{teamDetails.name}</span>
+                ) : (
+                    <span className="text-muted-foreground">-</span>
                 );
             },
         },
@@ -219,7 +330,12 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
             ),
             cell: ({ row }) => {
                 const date = row.original.startDate;
-                return format(new Date(date), "MMM dd, yyyy");
+                return (
+                    <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        {formatDate(date)}
+                    </div>
+                );
             },
         },
         {
@@ -229,29 +345,116 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
             ),
             cell: ({ row }) => {
                 const date = row.original.endDate;
-                return date ? format(new Date(date), "MMM dd, yyyy") : "Not set";
+                return (
+                    <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        {date ? formatDate(date) : "Not set"}
+                    </div>
+                );
             },
         },
-        {
+
+        /* {
             accessorKey: "createdBy",
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Created By" />
             ),
             cell: ({ row }) => {
-                const createdById = row.original.createdBy;
-                return <span>{userMap.get(createdById as Id<"users">) || "Unknown User"}</span>;
+                const project = row.original;
+                const creatorDetails = project.creatorDetails;
+
+                return (
+                    <div className="flex items-center space-x-2">
+                        {creatorDetails ? (
+                            <>
+                                <Avatar className="h-8 w-8 border-2">
+                                    {creatorDetails.image ? (
+                                        <AvatarImage
+                                            src={creatorDetails.image}
+                                            alt={creatorDetails.name}
+                                            onError={(e) => {
+                                                e.currentTarget.style.display = 'none';
+                                            }}
+                                        />
+                                    ) : null}
+                                    <AvatarFallback>
+                                        {creatorDetails.email?.[0]?.toUpperCase() || creatorDetails.name?.[0]?.toUpperCase() || '?'}
+                                    </AvatarFallback>
+                                </Avatar>
+
+                                <div className="flex flex-col">
+                                    <span className="font-bold">{creatorDetails.name}</span>
+                                    <span className="text-xs text-muted-foreground block">
+                                        {creatorDetails.email || 'Email not available'}
+                                    </span>
+                                </div>
+                            </>
+                        ) : (
+                            <span className="text-muted-foreground">Unknown User</span>
+                        )}
+                    </div>
+                );
             },
-        },
+        }, */
         {
-            accessorKey: "updatedBy",
+            accessorKey: "category",
             header: ({ column }) => (
-                <DataTableColumnHeader column={column} title="Updated By" />
+                <DataTableColumnHeader column={column} title="Category" />
             ),
             cell: ({ row }) => {
-                const updatedById = row.original.updatedBy;
-                return updatedById ? <span>{userMap.get(updatedById as Id<"users">) || "Unknown User"}</span> : <span>-</span>;
+                const category = row.getValue("category") as string;
+                return category ? (
+                    <Badge variant="secondary" className="px-2 py-1">
+                        {category}
+                    </Badge>
+                ) : (
+                    <span className="text-muted-foreground text-sm">No category</span>
+                );
             },
         },
+
+        {
+            accessorKey: "tags",
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title="Tags" />
+            ),
+            cell: ({ row }) => {
+                const tags = row.getValue("tags") as string[];
+                const maxVisibleTags = 1;
+
+                if (!tags || tags.length === 0) {
+                    return <span className="text-muted-foreground text-sm">No tags</span>;
+                }
+
+                const visibleTags = tags.slice(0, maxVisibleTags);
+                const remainingTags = tags.slice(maxVisibleTags);
+
+                return (
+                    <div className="flex items-center gap-1 overflow-hidden whitespace-nowrap">
+                        {visibleTags.map((tag, index) => (
+                            <Badge key={index} className="px-1 py-0.5 text-xs">
+                                {tag}
+                            </Badge>
+                        ))}
+                        {remainingTags.length > 0 && (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger>
+                                        <Badge className="px-1 py-0.5 text-xs">
+                                            +{remainingTags.length} more
+                                        </Badge>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <span>{remainingTags.join(", ")}</span>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        )}
+                    </div>
+                );
+            },
+        },
+
         {
             accessorKey: "updatedAt",
             header: ({ column }) => (
@@ -259,18 +462,12 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
             ),
             cell: ({ row }) => {
                 const date = row.original.updatedAt;
-                return date ? format(new Date(date), "MMM dd, yyyy HH:mm") : <span>-</span>;
-            },
-        },
-        {
-            accessorKey: "teamId",
-            header: ({ column }) => (
-                <DataTableColumnHeader column={column} title="Team" />
-            ),
-            cell: ({ row }) => {
-                // This would ideally fetch team names, but for now we'll just show the ID
-                const teamId = row.original.teamId;
-                return teamId ? <span className="text-xs text-muted-foreground">{teamId}</span> : <span>-</span>;
+                return (
+                    <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        {date ? formatDate(date) : <span>-</span>}
+                    </div>
+                );
             },
         },
         {
@@ -279,18 +476,67 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
                 const project = row.original as Project;
                 return (
                     <div className="flex justify-end">
-                       {/*  <UpdateProject projectId={project._id as Id<"projects">} />
-                        <DeleteProject
-                            projectId={project._id as Id<"projects">}
-                            projectName={project.name}
-                        /> */}
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem asChild>
+                                    <Link href={`/modules/projects/${project._id}`} className="flex items-center cursor-pointer">
+                                        <Eye className="mr-2 h-4 w-4" />
+                                        View Details
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                    <Link href={`/modules/projects/edit/${project._id}`} className="flex items-center cursor-pointer">
+                                        <Edit className="mr-2 h-4 w-4" />
+                                        Edit Project
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                    className=" cursor-pointer"
+                                    onClick={() => {
+                                        setDeleteProjectId(project._id as Id<"projects">);
+                                        setDeleteProjectName(project.name);
+                                        setDeleteDialogOpen(true);
+                                    }}
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete Project
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        {/* Delete Project Dialog */}
+                        {deleteProjectId === project._id && (
+                            <DeleteProjectDialog
+                                triggerText="Delete"
+                                title="Delete Project"
+                                description={
+                                    <>
+                                        Are you sure you want to delete the project <strong>{deleteProjectName}</strong>?
+                                        <br />
+                                        This action cannot be undone.
+                                    </>
+                                }
+                                projectId={deleteProjectId}
+                                projectName={deleteProjectName}
+                                open={deleteDialogOpen}
+                                onOpenChange={setDeleteDialogOpen}
+                            />
+                        )}
                     </div>
                 );
             },
             size: 40,
         },
     ];
-    
+
     const table = useReactTable({
         data: filteredProjects,
         columns,
@@ -305,14 +551,13 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
 
     return (
         <div>
-            {/* Floating bar */}
+    
             {selectedRows.size > 0 && (
-                <StaticTasksTableFloatingBar
+                <ProjectsTableFloatingBar
                     table={table}
                     setSelectedRows={setSelectedRows}
                 />
             )}
-
             <div className="flex items-center justify-between py-4">
                 {/* Search Input, Filters, and Date Range Picker */}
                 <div className="flex items-center space-x-4 flex-grow">
@@ -336,6 +581,40 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
                         onChange={setSelectedStatus}
                     />
 
+                    {/* Category Filter Dropdown */}
+                    {uniqueCategories.length > 0 && (
+                        <DataTableFacetedFilter
+                            title="Category"
+                            options={uniqueCategories.filter((category): category is { value: string, label: string } =>
+                                category.value !== undefined && category.label !== undefined
+                            )}
+                            selectedValues={selectedCategories}
+                            onChange={setSelectedCategories}
+                            renderOption={(option) => (
+                                <div className="flex items-center space-x-2">
+                                    <span>{option.label}</span>
+                                </div>
+                            )}
+
+                        />
+                    )}
+
+                    {/* Tags Filter Dropdown */}
+                    {uniqueTags.length > 0 && (
+                        <DataTableFacetedFilter
+                            title="Tags"
+                            options={uniqueTags}
+                            selectedValues={selectedTags}
+                            onChange={setSelectedTags}
+                            renderOption={(option) => (
+                                <div className="flex items-center space-x-2">
+                                    <span>{option.label}</span>
+                                </div>
+                            )}
+
+                        />
+                    )}
+
                     {/* Reset Filters Button */}
                     {isFiltered && (
                         <Button
@@ -358,7 +637,7 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
                             <Plus className="mr-2 h-4 w-4" /> Add Project
                         </Button>
                     </Link>
-                    
+
                     {/* Date Range Picker */}
                     <DateRangePicker
                         dateRange={dateRange}

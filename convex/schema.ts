@@ -183,6 +183,28 @@ const schema = defineSchema({
       v.literal("on_hold"),
       v.literal("canceled")
     ),
+    // New fields for categorization
+    tags: v.optional(v.array(v.string())),
+    category: v.optional(v.string()),
+    
+    // New fields for project health and priority
+    healthStatus: v.optional(v.union(
+      v.literal("on_track"),
+      v.literal("at_risk"),
+      v.literal("off_track")
+    )),
+    priority: v.optional(v.union(
+      v.literal("low"),
+      v.literal("medium"),
+      v.literal("high"),
+      v.literal("critical")
+    )),
+    
+    // New fields for progress tracking
+    progress: v.optional(v.number()), // Percentage from 0-100
+    completedTasks: v.optional(v.number()), // Number of completed tasks
+    totalTasks: v.optional(v.number()), // Total number of tasks
+    
     startDate: v.float64(),
     endDate: v.optional(v.float64()),
     createdBy: v.id("users"),
@@ -191,6 +213,9 @@ const schema = defineSchema({
   })
     .index("companyId", ["companyId"])
     .index("teamId", ["teamId"])
+    .index("category", ["category"])
+    .index("priority", ["priority"])
+    .index("healthStatus", ["healthStatus"])
     .index("status", ["status"]),
 
   tasks: defineTable({

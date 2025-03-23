@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/Themes/theme-provider";
 import { ConvexClientProvider } from "@/components/convex-client-provider";
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
+import { EdgeStoreProvider } from "@/lib/edgestore";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,25 +29,28 @@ export default function RootLayout({
 }>) {
   return (
     <ConvexAuthNextjsServerProvider>
+      <EdgeStoreProvider >
 
-      <html lang="en" suppressHydrationWarning>
-        <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        >
-          {/* ThemeProvider with fallback */}
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
+        <html lang="en" suppressHydrationWarning>
+          <body
+            className={`${geistSans.variable} ${geistMono.variable} antialiased`}
           >
-            <ConvexClientProvider>
-              {children}
-            </ConvexClientProvider>
-            <Toaster position="bottom-right" />
-          </ThemeProvider>
-        </body>
-      </html>
+            {/* ThemeProvider with fallback */}
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+            >
+              <ConvexClientProvider>
+                {children}
+              </ConvexClientProvider>
+              <Toaster position="bottom-right" />
+            </ThemeProvider>
+          </body>
+        </html>
+      </EdgeStoreProvider>
+
     </ConvexAuthNextjsServerProvider>
   );
 }
