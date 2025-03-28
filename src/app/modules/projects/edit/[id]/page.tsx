@@ -31,7 +31,7 @@ export default function EditProjectPage({ params }: { params: { id: string } }) 
 
 
     // Fetch the project data
-    const projectQuery = useQuery(api.queries.projects.fetchProjectById, {
+    const projectQuery = useQuery(api.queries.projects.getProjectById, {
         projectId
     });
 

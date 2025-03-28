@@ -299,3 +299,34 @@ export const fetchTeamWithProjects = query({
     };
   },
 });
+// Fetch team members by project ID
+export const fetchTeamMembersByProject = query({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, { projectId }) => {
+    // First, get the project to find the associated team
+    const project = await ctx.db.get(projectId);
+    if (!project || !project.teamId) return [];
+    
+    // Get the team
+    const team = await ctx.db.get(project.teamId);
+    if (!team) return [];
+    
+    // Fetch all team members
+    const members = await Promise.all(
+      team.members.map(async (memberId) => {
+        const user = await ctx.db.get(memberId);
+        if (!user) return null;
+        
+        return {
+          _id: user._id,
+          name: user.name || user.email,
+          email: user.email,
+          image: user.image
+        };
+      })
+    );
+    
+    // Filter out null values and return
+    return members.filter((member): member is NonNullable<typeof member> => member !== null);
+  },
+});

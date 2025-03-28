@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ArrowUp, CheckCircle2, Download, Loader, Trash2, X, Activity, Flag, AlertTriangle } from "lucide-react";
+import { ArrowUp, CheckCircle2, Download, Loader, Trash2, X, Flag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -19,17 +19,8 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { api } from "../../../../../convex/_generated/api";
-import { Id } from "../../../../../convex/_generated/dataModel";
-import { useState } from "react";
-import BulkDeleteProjectsDialog from "./BulkDeleteProjectsDialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { api } from "../../../../../../convex/_generated/api";
+import { Id } from "../../../../../../convex/_generated/dataModel";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -37,26 +28,26 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-type ProjectsTableFloatingBarProps = {
+type TasksTableFloatingBarProps = {
     table: any; // The React Table instance
     setSelectedRows: React.Dispatch<React.SetStateAction<Set<string>>>; // Prop for managing selected rows
 };
 
-export function ProjectsTableFloatingBar({
+export function TasksTableFloatingBar({
     table,
     setSelectedRows,
-}: ProjectsTableFloatingBarProps) {
+}: TasksTableFloatingBarProps) {
     const [isPending, setIsPending] = React.useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
-    const bulkDeleteProjects = useMutation(api.mutations.projects.bulkDeleteProjects);
-    const bulkUpdateProjects = useMutation(api.mutations.projects.bulkUpdateProjects);
+    const bulkDeleteTasks = useMutation(api.mutations.tasks.bulkDeleteTasks);
+    const bulkUpdateTasks = useMutation(api.mutations.tasks.bulkUpdateTasks);
 
     const selectedRows = table.getSelectedRowModel().rows;
 
     // Extract IDs
-    const selectedProjectIds = selectedRows
+    const selectedTaskIds = selectedRows
         .map((row: any) => row.original?._id)
-        .filter(Boolean) as Id<"projects">[]; // Remove invalid IDs
+        .filter(Boolean) as Id<"tasks">[]; // Remove invalid IDs
 
     // Clear selected rows
     const handleClearSelection = () => {
@@ -66,26 +57,26 @@ export function ProjectsTableFloatingBar({
 
     // Handle bulk delete
     const handleBulkDelete = async () => {
-        if (selectedProjectIds.length === 0) {
-            toast.error("No projects selected for deletion");
+        if (selectedTaskIds.length === 0) {
+            toast.error("No tasks selected for deletion");
             return;
         }
 
         setIsPending(true);
 
         try {
-            const result = await bulkDeleteProjects({ projectIds: selectedProjectIds });
+            const result = await bulkDeleteTasks({ taskIds: selectedTaskIds });
 
             if (result.success) {
-                toast.success(result.message || `Successfully deleted ${result.deletedCount} projects`);
+                toast.success(`Successfully deleted ${result.deletedCount} tasks`);
                 handleClearSelection();
                 setIsDeleteDialogOpen(false);
             } else {
-                toast.error(result.message || "Failed to delete projects");
+                toast.error("Failed to delete tasks");
             }
         } catch (error) {
-            console.error("Error deleting projects:", error);
-            toast.error("An error occurred while deleting projects");
+            console.error("Error deleting tasks:", error);
+            toast.error("An error occurred while deleting tasks");
         } finally {
             setIsPending(false);
         }
@@ -93,64 +84,43 @@ export function ProjectsTableFloatingBar({
 
     const handleBulkStatusUpdate = async (status: string) => {
         try {
-            const result = await bulkUpdateProjects({
-                projectIds: selectedProjectIds,
+            const result = await bulkUpdateTasks({
+                taskIds: selectedTaskIds,
                 updates: {
-                    status: status as "planned" | "in_progress" | "completed" | "on_hold" | "canceled",
+                    status: status as "todo" | "in_progress" | "completed" | "on_hold" | "canceled",
                 },
             });
 
             if (result.success) {
-                toast.success(result.message);
+                toast.success(`Successfully updated ${result.updatedCount} tasks`);
                 handleClearSelection();
             } else {
-                toast.error(result.message);
+                toast.error("Failed to update tasks");
             }
         } catch (error) {
-            toast.error("Failed to update projects");
-            console.error("Error updating projects:", error);
+            toast.error("Failed to update tasks");
+            console.error("Error updating tasks:", error);
         }
     };
 
     const handleBulkPriorityUpdate = async (priority: string) => {
         try {
-            const result = await bulkUpdateProjects({
-                projectIds: selectedProjectIds,
+            const result = await bulkUpdateTasks({
+                taskIds: selectedTaskIds,
                 updates: {
-                    priority: priority as "low" | "medium" | "high" | "critical",
+                    priority: priority as "low" | "medium" | "high" | "urgent",
                 },
             });
 
             if (result.success) {
-                toast.success(result.message);
+                toast.success(`Successfully updated ${result.updatedCount} tasks`);
                 handleClearSelection();
             } else {
-                toast.error(result.message);
+                toast.error("Failed to update tasks");
             }
         } catch (error) {
-            toast.error("Failed to update projects");
-            console.error("Error updating projects:", error);
-        }
-    };
-
-    const handleBulkHealthUpdate = async (healthStatus: string) => {
-        try {
-            const result = await bulkUpdateProjects({
-                projectIds: selectedProjectIds,
-                updates: {
-                    healthStatus: healthStatus as "on_track" | "at_risk" | "off_track",
-                },
-            });
-
-            if (result.success) {
-                toast.success(result.message);
-                handleClearSelection();
-            } else {
-                toast.error(result.message);
-            }
-        } catch (error) {
-            toast.error("Failed to update projects");
-            console.error("Error updating projects:", error);
+            toast.error("Failed to update tasks");
+            console.error("Error updating tasks:", error);
         }
     };
 
@@ -196,8 +166,8 @@ export function ProjectsTableFloatingBar({
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => handleBulkStatusUpdate("planned")}>
-                                        Planned
+                                    <DropdownMenuItem onClick={() => handleBulkStatusUpdate("todo")}>
+                                        To Do
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onClick={() => handleBulkStatusUpdate("in_progress")}>
                                         In Progress
@@ -236,33 +206,8 @@ export function ProjectsTableFloatingBar({
                                     <DropdownMenuItem onClick={() => handleBulkPriorityUpdate("high")}>
                                         High
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleBulkPriorityUpdate("critical")}>
-                                        Critical
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                            
-                            {/* Health Update Dropdown */}
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button
-                                        variant="secondary"
-                                        size="icon"
-                                        className="h-7 w-7"
-                                        disabled={selectedRows.length === 0}
-                                    >
-                                        <Activity className="h-3.5 w-3.5" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => handleBulkHealthUpdate("on_track")}>
-                                        On Track
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleBulkHealthUpdate("at_risk")}>
-                                        At Risk
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleBulkHealthUpdate("off_track")}>
-                                        Off Track
+                                    <DropdownMenuItem onClick={() => handleBulkPriorityUpdate("urgent")}>
+                                        Urgent
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -283,9 +228,9 @@ export function ProjectsTableFloatingBar({
                                     </AlertDialogTrigger>
                                     <AlertDialogContent>
                                         <AlertDialogHeader>
-                                            <AlertDialogTitle>Delete Selected Projects</AlertDialogTitle>
+                                            <AlertDialogTitle>Delete Selected Tasks</AlertDialogTitle>
                                             <AlertDialogDescription>
-                                                Are you sure you want to delete {selectedProjectIds.length} selected projects?
+                                                Are you sure you want to delete {selectedTaskIds.length} selected tasks?
                                                 This action cannot be undone.
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
@@ -304,7 +249,7 @@ export function ProjectsTableFloatingBar({
                                                         Deleting...
                                                     </>
                                                 ) : (
-                                                    "Delete Projects"
+                                                    "Delete Tasks"
                                                 )}
                                             </AlertDialogAction>
                                         </AlertDialogFooter>

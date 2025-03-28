@@ -95,6 +95,118 @@ body {
     scrollbar-width: none;  /* Firefox */
 }
 
+/* Timeline Component Styles */
+.timeline {
+  display: flex;
+  width: 100%;
+  position: relative;
+  margin: 1rem 0;
+}
+
+.timeline[data-orientation="horizontal"] {
+  flex-direction: row;
+  align-items: center;
+}
+
+.timeline[data-orientation="vertical"] {
+  flex-direction: column;
+}
+
+.timeline-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.timeline-item[data-orientation="horizontal"] {
+  padding-top: 0;
+}
+
+.timeline-item[data-orientation="vertical"] {
+  padding-left: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.timeline-header {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.timeline-header[data-orientation="horizontal"] {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.timeline-header[data-orientation="vertical"] {
+  flex-direction: row;
+}
+
+.timeline-separator {
+  position: absolute;
+  background-color: hsl(var(--border));
+  z-index: 0;
+}
+
+.timeline-separator[data-orientation="horizontal"] {
+  height: 2px;
+  width: 100%;
+  top: 0;
+  left: 50%;
+}
+
+.timeline-item:first-child .timeline-separator[data-orientation="horizontal"] {
+  left: 50%;
+  width: 50%;
+}
+
+.timeline-item:last-child .timeline-separator[data-orientation="horizontal"] {
+  width: 50%;
+  left: 0;
+}
+
+.timeline-separator[data-orientation="vertical"] {
+  width: 2px;
+  height: 100%;
+  left: 0.75rem;
+  top: 50%;
+}
+
+.timeline-indicator {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 9999px;
+  background-color: white;
+  border: 2px solid hsl(var(--border));
+  z-index: 10;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+}
+
+.timeline-date {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 0.25rem;
+}
+
+.timeline-title {
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.timeline-content {
+  padding-top: 0.25rem;
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  text-align: center;
+}
+
+/* Custom Timeline Styles (from your existing code) */
 .custom-timeline .ant-timeline-item-tail {
   border-left: 2px solid;
   border-color: hsl(var(--border)) !important;

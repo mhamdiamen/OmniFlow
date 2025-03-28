@@ -140,33 +140,21 @@ export const fetchProjectsByTeam = query({
   },
 });
 
-// Fetch a single project by ID with full details
-export const fetchProjectById = query({
-  args: { projectId: v.id("projects") },
-  handler: async (ctx, { projectId }) => {
-    const project = await ctx.db.get(projectId);
-    if (!project) return null;
+// Add this query to your existing projects.ts file
 
-    // Fetch creator details
-    const creator = project.createdBy ? await ctx.db.get(project.createdBy) : null;
+// Fetch a single project by ID
+export const getProjectById = query({
+  args: { 
+    projectId: v.id("projects")
+  },
+  handler: async (ctx, args) => {
+    const { projectId } = args;
     
-    // Fetch team details if assigned
-    const team = project.teamId ? await ctx.db.get(project.teamId) : null;
-
-    return {
-      ...project,
-      creatorDetails: creator ? {
-        _id: creator._id,
-        name: creator.name || "N/A",
-        email: creator.email,
-        image: creator.image,
-      } : null,
-      teamDetails: team ? {
-        _id: team._id,
-        name: team.name,
-        description: team.description,
-        memberCount: team.members.length,
-      } : null,
-    };
+    const project = await ctx.db.get(args.projectId);
+    if (!project) {
+      return null;
+    }
+    
+    return project;
   },
 });

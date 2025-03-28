@@ -55,6 +55,8 @@ import { MoreHorizontal, Edit, Eye, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState } from "react";
 import { ProjectsTableFloatingBar } from "./ProjectsTableFloatingBar";
+import { CreateTaskSheet } from "../tasks/components/CreateTaskSheet";
+import { Progress } from "@/components/ui/progress";
 export type Project = {
     _id: string;
     name: string;
@@ -102,13 +104,19 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
     const [selectedStatus, setSelectedStatus] = React.useState<Set<string>>(new Set());
     const [selectedCategories, setSelectedCategories] = React.useState<Set<string>>(new Set());
     const [selectedTags, setSelectedTags] = React.useState<Set<string>>(new Set());
+    const [selectedHealthStatus, setSelectedHealthStatus] = React.useState<Set<string>>(new Set());
+    const [selectedPriorities, setSelectedPriorities] = React.useState<Set<string>>(new Set());
     const [dateRange, setDateRange] = React.useState<{ from: Date | undefined; to: Date | undefined }>({
         from: undefined,
         to: undefined,
     });
+    // Add state for task creation
+    const [createTaskOpen, setCreateTaskOpen] = useState(false);
+    const [selectedProjectForTask, setSelectedProjectForTask] = useState<Id<"projects"> | null>(null);
 
     // Determine if any filters are applied
-    const isFiltered = selectedStatus.size > 0 || selectedCategories.size > 0 || selectedTags.size > 0;
+    const isFiltered = selectedStatus.size > 0 || selectedCategories.size > 0 || selectedTags.size > 0 ||
+        selectedHealthStatus.size > 0 || selectedPriorities.size > 0;
 
     // Extract unique statuses for filtering
     const uniqueStatuses = React.useMemo(() => {
@@ -127,7 +135,22 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
             label: category,
         }));
     }, [projects]);
-
+    // Extract unique health statuses for filtering
+    const uniqueHealthStatuses = React.useMemo(() => {
+        const healthStatuses = Array.from(new Set(projects.map(project => project.healthStatus).filter(Boolean)));
+        return healthStatuses.map((status) => ({
+            value: status,
+            label: status ? status.replace('_', ' ').charAt(0).toUpperCase() + status.replace('_', ' ').slice(1) : 'Unknown',
+        }));
+    }, [projects]);
+    // Extract unique priorities for filtering
+    const uniquePriorities = React.useMemo(() => {
+        const priorities = Array.from(new Set(projects.map(project => project.priority).filter(Boolean)));
+        return priorities.map((priority) => ({
+            value: priority,
+            label: priority ? priority.charAt(0).toUpperCase() + priority.slice(1) : 'Unknown',
+        }));
+    }, [projects]);
     // Extract unique tags for filtering
     const uniqueTags = React.useMemo(() => {
         const allTags = new Set<string>();
@@ -155,6 +178,16 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
                 return false;
             }
 
+            // Health Status filter
+            if (selectedHealthStatus.size > 0 && (!project.healthStatus || !selectedHealthStatus.has(project.healthStatus))) {
+                return false;
+            }
+
+            // Priority filter
+            if (selectedPriorities.size > 0 && (!project.priority || !selectedPriorities.has(project.priority))) {
+                return false;
+            }
+
             // Tags filter
             if (selectedTags.size > 0) {
                 if (!Array.isArray(project.tags) || project.tags.length === 0) {
@@ -170,12 +203,14 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
 
             return true;
         });
-    }, [projects, selectedStatus, selectedCategories, selectedTags]);
+    }, [projects, selectedStatus, selectedCategories, selectedTags, selectedHealthStatus, selectedPriorities]);
 
     const resetFilters = () => {
         setSelectedStatus(new Set());
         setSelectedCategories(new Set());
         setSelectedTags(new Set());
+        setSelectedHealthStatus(new Set());
+        setSelectedPriorities(new Set());
     };
 
     // Function to clear selected rows
@@ -397,63 +432,164 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
             },
         }, */
         {
-            accessorKey: "category",
+            accessorKey: "healthStatus",
             header: ({ column }) => (
-                <DataTableColumnHeader column={column} title="Category" />
+                <DataTableColumnHeader column={column} title="Health " />
             ),
             cell: ({ row }) => {
-                const category = row.getValue("category") as string;
-                return category ? (
-                    <Badge variant="secondary" className="px-2 py-1">
-                        {category}
+                const healthStatus = row.getValue("healthStatus") as string;
+
+                // Match health status colors
+                const healthStatusColors: Record<string, string> = {
+                    "on_track": "bg-green-500",
+                    "at_risk": "bg-amber-500",
+                    "off_track": "bg-red-500"
+                };
+
+                const healthStatusLabels: Record<string, string> = {
+                    "on_track": "On Track",
+                    "at_risk": "At Risk",
+                    "off_track": "Off Track"
+                };
+
+                return healthStatus ? (
+                    <Badge variant="outline" className="inline-flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded-full ${healthStatusColors[healthStatus] || "bg-gray-500"} flex-shrink-0`}></div>
+                        <span>{healthStatusLabels[healthStatus] || healthStatus}</span>
                     </Badge>
                 ) : (
-                    <span className="text-muted-foreground text-sm">No category</span>
+                    <span className="text-muted-foreground text-sm">Not set</span>
                 );
             },
         },
-
         {
-            accessorKey: "tags",
+            accessorKey: "priority",
             header: ({ column }) => (
-                <DataTableColumnHeader column={column} title="Tags" />
+                <DataTableColumnHeader column={column} title="Priority" />
             ),
             cell: ({ row }) => {
-                const tags = row.getValue("tags") as string[];
-                const maxVisibleTags = 1;
+                const priority = row.getValue("priority") as string;
 
-                if (!tags || tags.length === 0) {
-                    return <span className="text-muted-foreground text-sm">No tags</span>;
-                }
+                // Match priority colors
+                const priorityColors: Record<string, string> = {
+                    "low": "bg-blue-500",
+                    "medium": "bg-yellow-500",
+                    "high": "bg-orange-500",
+                    "critical": "bg-red-500"
+                };
 
-                const visibleTags = tags.slice(0, maxVisibleTags);
-                const remainingTags = tags.slice(maxVisibleTags);
+                const priorityLabels: Record<string, string> = {
+                    "low": "Low",
+                    "medium": "Medium",
+                    "high": "High",
+                    "critical": "Critical"
+                };
 
+                return priority ? (
+                    <Badge variant="outline" className="inline-flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded-full ${priorityColors[priority] || "bg-gray-500"} flex-shrink-0`}></div>
+                        <span>{priorityLabels[priority] || priority}</span>
+                    </Badge>
+                ) : (
+                    <span className="text-muted-foreground text-sm">Not set</span>
+                );
+            },
+        },
+        {
+            accessorKey: "progress",
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title="Progress" />
+            ),
+            cell: ({ row }) => {
+                const project = row.original;
+                const progress = project.progress || 0;
+        
+                // Determine progress bar color based on percentage
+                const getProgressColor = (progress: number) => {
+                    if (progress < 30) return 'bg-red-500';      // 0-29% - Red
+                    if (progress < 70) return 'bg-yellow-500';   // 30-69% - Yellow
+                    if (progress < 90) return 'bg-blue-500';     // 70-89% - Blue
+                    return 'bg-green-500';                       // 90-100% - Green
+                };
+        
+                const progressClass = getProgressColor(progress);
                 return (
-                    <div className="flex items-center gap-1 overflow-hidden whitespace-nowrap">
-                        {visibleTags.map((tag, index) => (
-                            <Badge key={index} className="px-1 py-0.5 text-xs">
-                                {tag}
-                            </Badge>
-                        ))}
-                        {remainingTags.length > 0 && (
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger>
-                                        <Badge className="px-1 py-0.5 text-xs">
-                                            +{remainingTags.length} more
-                                        </Badge>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <span>{remainingTags.join(", ")}</span>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        )}
+                    <div className="w-[150px] relative">
+                        <div className="relative">
+                            <div className={`w-full h-4 rounded-md overflow-hidden border-2 ${progressClass.replace('bg-', 'border-')}`}>
+                                <div
+                                    className={`h-full ${progressClass} transition-all duration-300`}
+                                    style={{ width: `${progress}%` }}
+                                />
+                            </div>
+                            <span className="absolute inset-0 text-xs font-medium flex items-center justify-center">
+                                {progress}%
+                            </span>
+                        </div>
                     </div>
                 );
             },
         },
+        
+
+        /*   {
+              accessorKey: "category",
+              header: ({ column }) => (
+                  <DataTableColumnHeader column={column} title="Category" />
+              ),
+              cell: ({ row }) => {
+                  const category = row.getValue("category") as string;
+                  return category ? (
+                      <Badge variant="secondary" className="px-2 py-1">
+                          {category}
+                      </Badge>
+                  ) : (
+                      <span className="text-muted-foreground text-sm">No category</span>
+                  );
+              },
+          },
+  
+          {
+              accessorKey: "tags",
+              header: ({ column }) => (
+                  <DataTableColumnHeader column={column} title="Tags" />
+              ),
+              cell: ({ row }) => {
+                  const tags = row.getValue("tags") as string[];
+                  const maxVisibleTags = 1;
+  
+                  if (!tags || tags.length === 0) {
+                      return <span className="text-muted-foreground text-sm">No tags</span>;
+                  }
+  
+                  const visibleTags = tags.slice(0, maxVisibleTags);
+                  const remainingTags = tags.slice(maxVisibleTags);
+  
+                  return (
+                      <div className="flex items-center gap-1 overflow-hidden whitespace-nowrap">
+                          {visibleTags.map((tag, index) => (
+                              <Badge key={index} className="px-1 py-0.5 text-xs">
+                                  {tag}
+                              </Badge>
+                          ))}
+                          {remainingTags.length > 0 && (
+                              <TooltipProvider>
+                                  <Tooltip>
+                                      <TooltipTrigger>
+                                          <Badge className="px-1 py-0.5 text-xs">
+                                              +{remainingTags.length} more
+                                          </Badge>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                          <span>{remainingTags.join(", ")}</span>
+                                      </TooltipContent>
+                                  </Tooltip>
+                              </TooltipProvider>
+                          )}
+                      </div>
+                  );
+              },
+          }, */
 
         {
             accessorKey: "updatedAt",
@@ -470,6 +606,7 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
                 );
             },
         },
+        // Modify the actions column to include the "Add Task" option
         {
             id: "actions",
             cell: ({ row }) => {
@@ -497,9 +634,19 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
                                         Edit Project
                                     </Link>
                                 </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    className="cursor-pointer"
+                                    onClick={() => {
+                                        setSelectedProjectForTask(project._id as Id<"projects">);
+                                        setCreateTaskOpen(true);
+                                    }}
+                                >
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Add Task
+                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
-                                    className=" cursor-pointer"
+                                    className="cursor-pointer"
                                     onClick={() => {
                                         setDeleteProjectId(project._id as Id<"projects">);
                                         setDeleteProjectName(project.name);
@@ -551,7 +698,7 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
 
     return (
         <div>
-    
+
             {selectedRows.size > 0 && (
                 <ProjectsTableFloatingBar
                     table={table}
@@ -580,7 +727,21 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
                         )}
                         onChange={setSelectedStatus}
                     />
-
+                    {uniqueHealthStatuses.length > 0 && (
+                        <DataTableFacetedFilter
+                            title="Health"
+                            options={uniqueHealthStatuses.filter((status): status is { value: "on_track" | "at_risk" | "off_track", label: string } =>
+                                status.value !== undefined
+                            )}
+                            selectedValues={selectedHealthStatus}
+                            onChange={setSelectedHealthStatus}
+                            renderOption={(option) => (
+                                <div className="flex items-center space-x-2">
+                                    <span>{option.label}</span>
+                                </div>
+                            )}
+                        />
+                    )}
                     {/* Category Filter Dropdown */}
                     {uniqueCategories.length > 0 && (
                         <DataTableFacetedFilter
@@ -615,6 +776,26 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
                         />
                     )}
 
+                    {/* Priority Filter Dropdown */}
+                    {uniquePriorities.length > 0 && (
+                        <DataTableFacetedFilter
+                            title="Priority"
+                            options={uniquePriorities
+                                .filter(priority => priority.value !== undefined)
+                                .map(priority => ({
+                                    value: priority.value as string,
+                                    label: priority.label
+                                }))}
+                            selectedValues={selectedPriorities}
+                            onChange={setSelectedPriorities}
+                            renderOption={(option) => (
+                                <div className="flex items-center space-x-2">
+                                    <span>{option.label}</span>
+                                </div>
+                            )}
+                        />
+                    )}
+
                     {/* Reset Filters Button */}
                     {isFiltered && (
                         <Button
@@ -631,12 +812,7 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
 
                 {/* Export and View Buttons */}
                 <div className="flex items-center space-x-2">
-                    {/* Add Create Project Link Button */}
-                    <Link href="/modules/projects/create" passHref>
-                        <Button size="sm" className="cursor-pointer">
-                            <Plus className="mr-2 h-4 w-4" /> Add Project
-                        </Button>
-                    </Link>
+
 
                     {/* Date Range Picker */}
                     <DateRangePicker
@@ -724,6 +900,18 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
             <div className="flex justify-between items-center py-4">
                 <DataTablePagination table={table} />
             </div>
+            {/* Add CreateTaskSheet component here */}
+            {selectedProjectForTask && (
+                <CreateTaskSheet
+                    projectId={selectedProjectForTask}
+                    open={createTaskOpen}
+                    onOpenChange={(open) => {
+                        setCreateTaskOpen(open);
+                        if (!open) setSelectedProjectForTask(null);
+                    }}
+                />
+            )}
         </div>
     );
+
 }

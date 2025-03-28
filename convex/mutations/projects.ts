@@ -200,3 +200,85 @@ export const bulkDeleteProjects = mutation({
     return results;
   },
 });
+
+// Add this mutation to your projects.ts file
+
+export const bulkUpdateProjects = mutation({
+  args: {
+    projectIds: v.array(v.id("projects")),
+    updates: v.object({
+      status: v.optional(v.union(
+        v.literal("planned"),
+        v.literal("in_progress"),
+        v.literal("completed"),
+        v.literal("on_hold"),
+        v.literal("canceled")
+      )),
+      priority: v.optional(v.union(
+        v.literal("low"),
+        v.literal("medium"),
+        v.literal("high"),
+        v.literal("critical")
+      )),
+      healthStatus: v.optional(v.union(
+        v.literal("on_track"),
+        v.literal("at_risk"),
+        v.literal("off_track")
+      )),
+      category: v.optional(v.string()),
+      tags: v.optional(v.array(v.string())),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const { projectIds, updates } = args;
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("User not authenticated");
+    
+    const results = {
+      success: true,
+      updatedCount: 0,
+      errors: [] as { projectId: Id<"projects">, error: string }[],
+      message: ""
+    };
+    
+    // Update each project
+    for (const projectId of projectIds) {
+      try {
+        // Check if project exists
+        const project = await ctx.db.get(projectId);
+        if (!project) {
+          results.errors.push({
+            projectId,
+            error: "Project not found"
+          });
+          continue;
+        }
+        
+        // Update the project
+        await ctx.db.patch(projectId, {
+          ...updates,
+          updatedBy: userId,
+          updatedAt: Date.now(),
+        });
+        
+        results.updatedCount++;
+      } catch (error) {
+        results.errors.push({
+          projectId,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    }
+    
+    if (results.errors.length > 0 && results.updatedCount === 0) {
+      results.success = false;
+      results.message = "Failed to update any projects";
+    } else if (results.errors.length > 0) {
+      results.message = `Successfully updated ${results.updatedCount} projects, but encountered errors with ${results.errors.length} projects`;
+    } else {
+      results.message = `Successfully updated ${results.updatedCount} projects`;
+    }
+    
+    return results;
+  },
+});
