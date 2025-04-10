@@ -309,38 +309,7 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
                 return <span title={text}>{truncatedText}</span>;
             },
         }, */
-        {
-            accessorKey: "status",
-            header: ({ column }) => (
-                <DataTableColumnHeader column={column} title="Status" />
-            ),
-            cell: ({ row }) => {
-                const status = row.getValue("status") as string;
-                // Match status colors with create project page
-                const statusColors: Record<string, string> = {
-                    "planned": "bg-blue-500",
-                    "in_progress": "bg-green-500",
-                    "completed": "bg-purple-500",
-                    "on_hold": "bg-amber-500",
-                    "canceled": "bg-red-500"
-                };
-
-                const statusLabels: Record<string, string> = {
-                    "planned": "Planned",
-                    "in_progress": "In Progress",
-                    "completed": "Completed",
-                    "on_hold": "On Hold",
-                    "canceled": "Canceled"
-                };
-
-                return (
-                    <Badge variant="outline" className="inline-flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full ${statusColors[status] || "bg-gray-500"} flex-shrink-0`}></div>
-                        <span>{statusLabels[status] || status}</span>
-                    </Badge>
-                );
-            },
-        },
+      
         {
             accessorKey: "teamId",
             header: ({ column }) => (
@@ -431,6 +400,38 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
                 );
             },
         }, */
+        {
+            accessorKey: "status",
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title="Status" />
+            ),
+            cell: ({ row }) => {
+                const status = row.getValue("status") as string;
+                // Match status colors with create project page
+                const statusColors: Record<string, string> = {
+                    "planned": "bg-blue-500",
+                    "in_progress": "bg-green-500",
+                    "completed": "bg-purple-500",
+                    "on_hold": "bg-amber-500",
+                    "canceled": "bg-red-500"
+                };
+
+                const statusLabels: Record<string, string> = {
+                    "planned": "Planned",
+                    "in_progress": "In Progress",
+                    "completed": "Completed",
+                    "on_hold": "On Hold",
+                    "canceled": "Canceled"
+                };
+
+                return (
+                    <Badge variant="outline" className="inline-flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded-full ${statusColors[status] || "bg-gray-500"} flex-shrink-0`}></div>
+                        <span>{statusLabels[status] || status}</span>
+                    </Badge>
+                );
+            },
+        },
         {
             accessorKey: "healthStatus",
             header: ({ column }) => (

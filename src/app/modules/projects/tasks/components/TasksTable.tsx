@@ -453,7 +453,7 @@ export function TasksTable({ tasks, projectId }: TasksTableProps) {
                             <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem
+                                <DropdownMenuItem className="cursor-pointer"
                                     onClick={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
@@ -463,7 +463,7 @@ export function TasksTable({ tasks, projectId }: TasksTableProps) {
                                     <Eye className="mr-2 h-4 w-4" />
                                     View Details
                                 </DropdownMenuItem>
-                                <DropdownMenuItem
+                                <DropdownMenuItem className="cursor-pointer"
                                     onClick={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();

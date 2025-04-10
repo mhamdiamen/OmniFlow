@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Label } from "@/components/ui/label";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import React from "react";
 import {
   Timeline,
   TimelineContent,
@@ -31,9 +32,12 @@ import {
 } from "@/components/ui/timeline";
 
 export default function ProjectDetailsPage({ params }: { params: { id: string } }) {
+
   const router = useRouter();
-  const projectId = params.id as Id<"projects">;
-  
+  // Use `use` to unwrap params for future compatibility
+  const unwrappedParams = use(params as any); // Temporarily cast to `any` to avoid TypeScript errors
+  const projectId = (unwrappedParams as { id: Id<"projects"> }).id;
+
   // Fetch project details
   const project = useQuery(api.queries.projects.getProjectById, { 
     projectId 

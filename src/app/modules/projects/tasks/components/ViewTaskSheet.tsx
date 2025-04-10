@@ -225,7 +225,7 @@ export function ViewTaskSheet({
                             </div>
                         </div>
                         {/* Completed Information */}
-                        {task.status === "completed" && task.completedAt && (
+                      {/*   {task.status === "completed" && task.completedAt && (
                             <div className="flex items-center gap-4">
                                 <Label className="text-lg font-semibold w-32">Completed</Label>
                                 <div className="flex items-center space-x-2">
@@ -253,7 +253,7 @@ export function ViewTaskSheet({
                                 </div>
                             </div>
                         )}
-
+ */}
                         {/* Description */}
                         {task.description && (
                             <div className="flex flex-col gap-2">

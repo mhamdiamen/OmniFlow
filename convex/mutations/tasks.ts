@@ -365,7 +365,7 @@ export const bulkDeleteTasks = mutation({
           // Update progress percentage
           progress: (project.totalTasks || 0) > 1
             ? Math.round(
-              (project.completedTasks || 0) - (task.status === "completed" ? 1 : 0) /
+              ((project.completedTasks || 0) - (task.status === "completed" ? 1 : 0)) /
               ((project.totalTasks || 0) - 1) * 100
             )
             : 0

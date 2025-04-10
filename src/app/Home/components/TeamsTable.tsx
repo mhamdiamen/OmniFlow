@@ -28,7 +28,7 @@ import { TableViewOptions } from "@/components/RoleManagement/datatable/DataTabl
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/dateUtils";
 import { DataTablePagination } from "@/components/ModulesManagement/datatable/DataTablePagination";
-import { Users, UserPlus, MoreHorizontal, Trash2, Edit, Eye, XCircle, Copy } from "lucide-react";
+import { Users, UserPlus, MoreHorizontal, Trash2, Edit, Eye, XCircle } from "lucide-react";
 import { EmptyState } from "@/components/ModulesManagement/components/ReusableEmptyState";
 import { useQuery, useMutation } from "convex/react";
 import { useState } from "react";
@@ -52,7 +52,6 @@ import BulkDeleteTeamsDialog from "./CRUD/BulkDeleteTeamsDialog"; // Add this li
 import { TeamTableFloatingBar } from "./TeamTableFloatingBar";
 import { ViewTeamDetailsSheet } from "./ViewTeamDetails"; // Add this line
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { AddTeamMembersSheet } from "./AddTeamMembers"; // Add this import
 
 // Define the Team type based on your schema
 export type Team = {
@@ -113,8 +112,6 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
   const [viewDetailsTeamId, setViewDetailsTeamId] = useState<Id<"teams"> | null>(null); // Add this line
   const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(new Set()); // Add this line
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set()); // Add this line
-  const [addMembersDialogOpen, setAddMembersDialogOpen] = useState(false); // Add this line
-  const [addMembersTeamId, setAddMembersTeamId] = useState<Id<"teams"> | null>(null); // Add this line
 
   // Fetch teams data
   const teams = useQuery(api.queries.teams.fetchTeamsByCompany, { companyId });
@@ -243,8 +240,8 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
           />
         );
       },
-    },
-    {
+        },
+        {
       accessorKey: "name",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Team Name" />
@@ -252,12 +249,12 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
       cell: ({ row }) => {
         return (
           <div className="flex items-center space-x-2">
-            <span className="font-bold">{row.getValue("name")}</span>
+        <span className="font-bold">{row.getValue("name")}</span>
           </div>
         );
       },
-    },
-    {
+        },
+        {
       accessorKey: "memberDetails",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Members" />
@@ -273,8 +270,8 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
               {members.slice(0, displayCount).map((member, i) => (
                 <Avatar key={member._id} className="h-8 w-8 border-2 ">
                   {member.image ? (
-                    <AvatarImage
-                      src={member.image}
+                    <AvatarImage 
+                      src={member.image} 
                       alt={member.name}
                       onError={(e) => {
                         // If image fails to load, hide it so fallback shows
@@ -326,8 +323,8 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
                 {/* Avatar Component */}
                 <Avatar className="h-8 w-8 border-2 ">
                   {teamLeader.image ? (
-                    <AvatarImage
-                      src={teamLeader.image}
+                    <AvatarImage 
+                      src={teamLeader.image} 
                       alt={teamLeader.name}
                       onError={(e) => {
                         // If image fails to load, hide it so fallback shows
@@ -339,7 +336,7 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
                     {teamLeader.email?.[0]?.toUpperCase() || teamLeader.name?.[0]?.toUpperCase() || '?'}
                   </AvatarFallback>
                 </Avatar>
-
+        
                 {/* Team Leader Name and Email */}
                 <div className="flex flex-col"> {/* Ensures vertical stacking */}
                   <span className="font-bold">{teamLeader.name}</span>
@@ -369,8 +366,8 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
                 {/* Avatar Component */}
                 <Avatar className="h-8 w-8 border-2 ">
                   {creator.image ? (
-                    <AvatarImage
-                      src={creator.image}
+                    <AvatarImage 
+                      src={creator.image} 
                       alt={creator.name}
                       onError={(e) => {
                         // If image fails to load, hide it so fallback shows
@@ -382,7 +379,7 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
                     {creator.email?.[0]?.toUpperCase() || creator.name?.[0]?.toUpperCase() || '?'}
                   </AvatarFallback>
                 </Avatar>
-
+        
                 {/* Creator Name and Email */}
                 <div className="flex flex-col">
                   <span className="font-bold">{creator.name}</span>
@@ -398,8 +395,8 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
         );
       },
     },
-
-
+ 
+  
     {
       accessorKey: "tags",
       header: ({ column }) => (
@@ -414,7 +411,7 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
         return (
           <div className="flex items-center gap-1 overflow-hidden whitespace-nowrap">
             {visibleTags.map((tag, index) => (
-              <Badge key={index} className="px-1 py-0.5 text-xs">
+              <Badge  key={index} className="px-1 py-0.5 text-xs">
                 {tag}
               </Badge>
             ))}
@@ -453,55 +450,37 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative h-8 w-8 p-0 data-[state=open]:bg-accent"
-              >
-                <MoreHorizontal className="h-4 w-4" />
+              <Button variant="ghost" className="h-8 w-8 p-0">
                 <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[180px]">
-              <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">
-                Team Management
-              </DropdownMenuLabel>
-
-
-              <DropdownMenuItem
-                onClick={() => {
-                  setViewDetailsTeamId(team._id);
-                  setViewDetailsDialogOpen(true);
-                }}
-                className="cursor-pointer"
-              >
-                <Eye className="mr-2 h-4 w-4" />
-                <span>View Details</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {
-                  setSelectedTeamId(team._id);
-                  setUpdateDialogOpen(true);
-                }}
-                className="cursor-pointer"
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                <span>Edit Team</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {
-                  setAddMembersTeamId(team._id);
-                  setAddMembersDialogOpen(true);
-                }}
-                className="cursor-pointer"
-              >
-                <UserPlus className="mr-2 h-4 w-4" />
-                <span>Add Members</span>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => navigator.clipboard.writeText(team._id)}>
+                Copy Team ID
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-
+              <DropdownMenuItem onClick={() => {
+                setViewDetailsTeamId(team._id);
+                setViewDetailsDialogOpen(true);
+              }}>
+                <Eye className="mr-2 h-4 w-4" />
+                View Details
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => {
+                setSelectedTeamId(team._id);
+                setUpdateDialogOpen(true);
+              }}>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit Team
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <UserPlus className="mr-2 h-4 w-4" />
+                Add Members
+              </DropdownMenuItem>
               <DropdownMenuItem
-                className="cursor-pointer "
+                className="text-red-600"
                 onClick={() => {
                   setDeleteTeamId(team._id);
                   setDeleteTeamName(team.name);
@@ -509,7 +488,7 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
                 }}
               >
                 <Trash2 className="mr-2 h-4 w-4" />
-                <span>Delete Team</span>
+                Delete Team
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -547,23 +526,6 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
 
   return (
     <div className="w-full space-y-4">
-      {/* Modified headline and paragraph section with button */}
-      <div className="mb-6 flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Team Management</h1>
-          <p className="text-muted-foreground mt-2">
-            Create and manage teams to streamline collaboration and workflow.
-          </p>
-        </div>
-        <Button
-          onClick={() => setCreateDialogOpen(true)}
-          className="h-10"
-        >
-          <Users className="mr-2 h-4 w-4" />
-          Create Team
-        </Button>
-      </div>
-
       {/* Floating bar (if any selection is active) */}
       {selectedRows.size > 0 && (
         <TeamTableFloatingBar table={table} setSelectedRows={setSelectedRows} />
@@ -578,7 +540,7 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
             }
             className="max-w-sm"
           />
-          {uniqueStatuses.length > 0 && (
+           {uniqueStatuses.length > 0 && (
             <DataTableFacetedFilter
               title="Status"
               options={uniqueStatuses}
@@ -630,7 +592,7 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
               onChange={setSelectedTeamLeaders}
             />
           )}
-
+         
           {isFiltered && (
             <Button
               variant="ghost"
@@ -643,8 +605,15 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
           )}
         </div>
         <div className="flex items-center space-x-2">
-
-          <TableViewOptions
+          <Button
+            variant="outline"
+            className="ml-auto h-8"
+            onClick={() => setCreateDialogOpen(true)}
+          >
+            <Users className="mr-2 h-4 w-4" />
+            Create Team
+          </Button>
+          <TableViewOptions 
             columns={table.getAllColumns().map(column => ({
               id: column.id,
               isVisible: column.getIsVisible(),
@@ -654,7 +623,7 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
           />
         </div>
       </div>
-
+      
       <CreateTeamSheet
         companyId={companyId}
         open={createDialogOpen}
@@ -694,16 +663,6 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
           onOpenChange={setViewDetailsDialogOpen}
         />
       )}
-      
-      {/* Add the AddTeamMembersSheet component */}
-      {addMembersTeamId && (
-        <AddTeamMembersSheet
-          teamId={addMembersTeamId}
-          open={addMembersDialogOpen}
-          onOpenChange={setAddMembersDialogOpen}
-        />
-      )}
-      
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -714,9 +673,9 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
                     {header.isPlaceholder
                       ? null
                       : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                   </TableHead>
                 ))}
               </TableRow>
@@ -765,5 +724,4 @@ export function TeamsTable({ companyId }: TeamsTableProps) {
       <DataTablePagination table={table} />
     </div>
   );
-
 }
