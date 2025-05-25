@@ -18,24 +18,24 @@ const BlockPreview = ({ content }: BlockPreviewProps) => {
   const customDarkTheme: Theme = {
     colors: {
       editor: {
-        text: "#FFFFFF", // White text
-        background: "#0a0a0a", // Dark background
+        text: "#f6f6f6", // White text
+        background: "#0d0d0d", // Dark background
       },
       menu: {
-        text: "#FFFFFF", // White text
-        background: "#0a0a0a", // Dark menu background
+        text: "#f6f6f6", // White text
+        background: "#0d0d0d", // Dark menu background
       },
       tooltip: {
-        text: "#FFFFFF", // White text
-        background: "#0a0a0a", // Dark tooltip background
+        text: "#f6f6f6", // White text
+        background: "#0d0d0d", // Dark tooltip background
       },
       hovered: {
-        text: "#FFFFFF", // White text
-        background: "#0a0a0a", // Dark hover background
+        text: "#f6f6f6", // White text
+        background: "#0d0d0d", // Dark hover background
       },
       selected: {
-        text: "#FFFFFF", // White text
-        background: "#0a0a0a", // Dark selected background
+        text: "#f6f6f6", // White text
+        background: "#0d0d0d", // Dark selected background
       },
     },
     borderRadius: 4, // Rounded corners

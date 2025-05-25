@@ -108,6 +108,15 @@ export function ViewTaskSheet({
                                 </div>
                             </div>
                             <div className="space-y-4 p-4">
+                                {/* Description */}
+                                {task.description && (
+                                    <div className="flex flex-col gap-2">
+                                        <Label className="text-lg font-semibold">Description</Label>
+                                        <p className="text-sm text-muted-foreground rounded-md border p-4 bg-muted/30 whitespace-pre-wrap">
+                                            {task.description}
+                                        </p>
+                                    </div>
+                                )}
                                 {/* Status */}
                                 <div className="flex items-center gap-4">
                                     <Label className="text-sm w-32 flex items-center gap-2">
@@ -225,7 +234,7 @@ export function ViewTaskSheet({
                             </div>
                         </div>
                         {/* Completed Information */}
-                      {/*   {task.status === "completed" && task.completedAt && (
+                        {/*   {task.status === "completed" && task.completedAt && (
                             <div className="flex items-center gap-4">
                                 <Label className="text-lg font-semibold w-32">Completed</Label>
                                 <div className="flex items-center space-x-2">
@@ -254,15 +263,7 @@ export function ViewTaskSheet({
                             </div>
                         )}
  */}
-                        {/* Description */}
-                        {task.description && (
-                            <div className="flex flex-col gap-2">
-                                <Label className="text-lg font-semibold">Description</Label>
-                                <p className="text-sm text-muted-foreground rounded-md border p-4 bg-muted/30 whitespace-pre-wrap">
-                                    {task.description}
-                                </p>
-                            </div>
-                        )}
+
 
                         {/* Close Button */}
                         <div className="flex justify-end pt-4">

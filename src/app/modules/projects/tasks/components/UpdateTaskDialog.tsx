@@ -27,6 +27,12 @@ import {
 } from "@/components/ui/select";
 import TextareaWithLimit from "@/components/ModulesManagement/components/TextareaWithLimit";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover"
+import { format } from "date-fns";
 
 interface UpdateTaskDialogProps {
     taskId: Id<"tasks">;
@@ -63,7 +69,7 @@ export function UpdateTaskDialog({
         assigneeId: "",
         dueDate: undefined as Date | undefined,
     });
-    
+
     const [loading, setLoading] = useState(false);
     const [isInitialized, setIsInitialized] = useState(false);
     const lastInputRef = useRef<HTMLInputElement>(null);
@@ -110,7 +116,7 @@ export function UpdateTaskDialog({
     useEffect(() => {
         if (task && !isInitialized) {
             console.log("Task data loaded:", task);
-            
+
             setFormState({
                 taskName: task.name,
                 description: task.description || "",
@@ -119,7 +125,7 @@ export function UpdateTaskDialog({
                 assigneeId: task.assigneeId || "",
                 dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
             });
-            
+
             setIsInitialized(true);
         }
     }, [task, isInitialized]);
@@ -194,7 +200,7 @@ export function UpdateTaskDialog({
             // Close all dropdowns before closing the sheet
             setStatusDropdownOpen(false);
             setPriorityDropdownOpen(false);
-            
+
             // Small delay to ensure dropdowns are closed before the sheet closes
             setTimeout(() => {
                 onOpenChange(open);
@@ -213,11 +219,7 @@ export function UpdateTaskDialog({
                     lastInputRef.current?.focus();
                 }}
                 onPointerDownOutside={(e) => {
-                    // Prevent closing the sheet when clicking on the date picker
-                    const target = e.target as HTMLElement;
-                    if (target.closest('.react-calendar') || target.closest('[data-radix-popper-content-wrapper]')) {
-                        e.preventDefault();
-                    }
+                    e.preventDefault(); // Prevents closing when clicking outside the sheet
                 }}
             >
                 <div className="flex flex-col gap-6">
@@ -237,11 +239,18 @@ export function UpdateTaskDialog({
                     </div>
 
                     {task && isInitialized ? (
-                        <form onSubmit={handleSubmit} className="space-y-6">
+                        <form onSubmit={handleSubmit} className="space-y-8">
+                            {/* Basic Information Section */}
                             <div className="space-y-4">
+                                <div className="mb-2">
+                                    <h3 className="text-lg font-bold">Basic Information</h3>
+                                    <p className="text-muted-foreground text-sm">
+                                        Enter the core details of your task.
+                                    </p>
+                                </div>
                                 {/* Task Name */}
-                                <div className="flex items-center gap-4">
-                                    <Label className="text-lg font-semibold w-32">Name</Label>
+                                <div className="space-y-2">
+                                    <Label htmlFor="task-name" className="text-sm font-medium">Name</Label>
                                     <Input
                                         ref={lastInputRef}
                                         id="task-name"
@@ -250,10 +259,9 @@ export function UpdateTaskDialog({
                                         placeholder="Enter task name"
                                     />
                                 </div>
-
                                 {/* Description */}
-                                <div className="flex items-center gap-4">
-                                    <Label className="text-lg font-semibold w-32">Description</Label>
+                                <div className="space-y-2">
+                                    <Label htmlFor="description" className="text-sm font-medium">Description</Label>
                                     <TextareaWithLimit
                                         id="description"
                                         value={formState.description}
@@ -263,17 +271,71 @@ export function UpdateTaskDialog({
                                         className="w-full"
                                     />
                                 </div>
-
+                            </div>
+                             {/* Assignment and Timeline Section */}
+                             <div className="space-y-4 pt-2 border-t">
+                                <div className="mb-2">
+                                    <h3 className="text-lg font-bold">Assignment and Timeline</h3>
+                                    <p className="text-muted-foreground text-sm">
+                                        Assign the task to a team member and set a due date.
+                                    </p>
+                                </div>
+                                {/* Assignee */}
+                                <div className="space-y-2">
+                                    <UserSelect
+                                        value={formState.assigneeId}
+                                        onChange={(value) => updateFormField('assigneeId', value)}
+                                        options={userOptions}
+                                        label="Assignee"
+                                    />
+                                </div>
+                                {/* Due Date */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="due-date" className="text-sm font-medium">Due Date</Label>
+                                    <Popover modal={true}>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                id="due-date"
+                                                variant={"outline"}
+                                                className={cn(
+                                                    "group bg-background hover:bg-background border-input w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]",
+                                                    !formState.dueDate && "text-muted-foreground"
+                                                )}
+                                            >
+                                                <span className={cn("truncate", !formState.dueDate && "text-muted-foreground")}>{formState.dueDate ? format(formState.dueDate, "PPP") : "Pick a date"}</span>
+                                                <Calendar size={16} className="text-muted-foreground/80 group-hover:text-foreground shrink-0 transition-colors" aria-hidden="true" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent align="start" className="p-0 z-[9999]" sideOffset={8} collisionPadding={8}>
+                                            <CalendarComponent
+                                                mode="single"
+                                                selected={formState.dueDate}
+                                                onSelect={(date) => updateFormField('dueDate', date)}
+                                                initialFocus
+                                                fromDate={new Date()}
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+                            </div>
+                            {/* Status and Priority Section */}
+                            <div className="space-y-4 pt-2 border-t">
+                                <div className="mb-2">
+                                    <h3 className="text-lg font-bold">Status and Priority</h3>
+                                    <p className="text-muted-foreground text-sm">
+                                        Set the current status and importance level of this task.
+                                    </p>
+                                </div>
                                 {/* Status */}
-                                <div className="flex items-center gap-4">
-                                    <Label className="text-lg font-semibold w-32">Status</Label>
+                                <div className="space-y-2">
+                                    <Label htmlFor="status" className="text-sm font-medium">Status</Label>
                                     <Select
                                         open={statusDropdownOpen}
                                         onOpenChange={setStatusDropdownOpen}
                                         value={formState.status}
                                         onValueChange={(value) => updateFormField('status', value)}
                                     >
-                                        <SelectTrigger className="h-auto ps-2 w-full [&>span]:flex [&>span]:items-center [&>span]:gap-2">
+                                        <SelectTrigger id="status" className="h-auto ps-2 w-full [&>span]:flex [&>span]:items-center [&>span]:gap-2">
                                             <SelectValue placeholder="Select status" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -286,17 +348,16 @@ export function UpdateTaskDialog({
                                         </SelectContent>
                                     </Select>
                                 </div>
-
                                 {/* Priority */}
-                                <div className="flex items-center gap-4">
-                                    <Label className="text-lg font-semibold w-32">Priority</Label>
+                                <div className="space-y-2">
+                                    <Label htmlFor="priority" className="text-sm font-medium">Priority</Label>
                                     <Select
                                         open={priorityDropdownOpen}
                                         onOpenChange={setPriorityDropdownOpen}
                                         value={formState.priority}
                                         onValueChange={(value) => updateFormField('priority', value)}
                                     >
-                                        <SelectTrigger className="h-auto ps-2 w-full [&>span]:flex [&>span]:items-center [&>span]:gap-2">
+                                        <SelectTrigger id="priority" className="h-auto ps-2 w-full [&>span]:flex [&>span]:items-center [&>span]:gap-2">
                                             <SelectValue placeholder="Select priority" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -309,38 +370,8 @@ export function UpdateTaskDialog({
                                         </SelectContent>
                                     </Select>
                                 </div>
-
-                                {/* Assignee */}
-                                <div className="flex items-center gap-4">
-                                    <Label className="text-lg font-semibold w-32">Assignee</Label>
-                                    <div className="w-full">
-                                        <UserSelect
-                                            value={formState.assigneeId}
-                                            onChange={(value) => updateFormField('assigneeId', value)}
-                                            options={userOptions}
-                                            label="Assignee"
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Due Date */}
-                                <div className="flex flex-col gap-4">
-                                    <Label className="text-lg font-semibold">Due Date</Label>
-                                    <div className="w-full flex justify-center">
-                                        <CalendarComponent
-                                            mode="single"
-                                            selected={formState.dueDate}
-                                            onSelect={(date) => updateFormField('dueDate', date)}
-                                            disabled={[{ before: new Date() }]}
-                                            className="rounded-md"
-                                            showOutsideDays={false}
-                                            fixedWeeks={false}
-                                            ISOWeek={false}
-                                        />
-                                    </div>
-                                </div>
                             </div>
-
+                           
                             <Button type="submit" className="w-full" disabled={loading}>
                                 {loading ? "Updating..." : "Update Task"}
                             </Button>
@@ -354,4 +385,4 @@ export function UpdateTaskDialog({
             </SheetContent>
         </Sheet>
     );
-} 
+}

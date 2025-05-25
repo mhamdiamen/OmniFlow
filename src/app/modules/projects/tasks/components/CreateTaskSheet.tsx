@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ClipboardList, Trash, Calendar } from "lucide-react";
+import { ClipboardList, Trash, Calendar, CalendarIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../../convex/_generated/api";
@@ -30,7 +30,11 @@ import {
 import TextareaWithLimit from "@/components/ModulesManagement/components/TextareaWithLimit";
 import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover"
 interface CreateTaskSheetProps {
     projectId?: Id<"projects">;
     open: boolean;
@@ -140,7 +144,7 @@ export function CreateTaskSheet({
             setStatusDropdownOpen(false);
             setPriorityDropdownOpen(false);
             setProjectDropdownOpen(false);
-            
+
             // Small delay to ensure dropdowns are closed before the sheet closes
             setTimeout(() => {
                 onOpenChange(open);
@@ -213,11 +217,7 @@ export function CreateTaskSheet({
                     lastInputRef.current?.focus();
                 }}
                 onPointerDownOutside={(e) => {
-                    // Prevent closing the sheet when clicking on the date picker
-                    const target = e.target as HTMLElement;
-                    if (target.closest('.react-calendar') || target.closest('[data-radix-popper-content-wrapper]')) {
-                        e.preventDefault();
-                    }
+                    e.preventDefault(); // Prevents closing when clicking outside the sheet
                 }}
             >
                 <div className="flex flex-col gap-6">
@@ -245,7 +245,7 @@ export function CreateTaskSheet({
                                     Enter the core details of your task.
                                 </p>
                             </div>
-                            
+
                             {/* Task Name */}
                             <div className="space-y-2">
                                 <Label htmlFor="task-name" className="text-sm font-medium">Name</Label>
@@ -299,7 +299,58 @@ export function CreateTaskSheet({
                                 />
                             </div>
                         </div>
+  {/* Assignment and Timeline Section */}
+  <div className="space-y-4 pt-2 border-t">
+                            <div className="mb-2">
+                                <h3 className="text-lg font-bold">Assignment and Timeline</h3>
+                                <p className="text-muted-foreground text-sm">
+                                    Assign the task to a team member and set a due date.
+                                </p>
+                            </div>
 
+                            {/* Assignee */}
+                            <div className="space-y-2">
+                                <UserSelect
+                                    value={assigneeId}
+                                    onChange={setAssigneeId}
+                                    options={userOptions}
+                                    label="Assignee"
+                                />
+                            </div>
+
+                            {/* Due Date */}
+                            <div className="space-y-2">
+                                <Label htmlFor="due-date" className="text-sm font-medium">Due Date</Label>
+                                <Popover modal={true}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            id="due-date"
+                                            variant={"outline"}
+                                            className={cn(
+                                                "group bg-background hover:bg-background border-input w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]",
+                                                !dueDate && "text-muted-foreground"
+                                            )}
+                                        >
+                                            <span className={cn("truncate", !dueDate && "text-muted-foreground")}>{dueDate ? format(dueDate, "PPP") : "Pick a date"}</span>
+                                            <CalendarIcon
+                                                size={16}
+                                                className="text-muted-foreground/80 group-hover:text-foreground shrink-0 transition-colors"
+                                                aria-hidden="true"
+                                            />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent align="start" className="p-0 z-[9999]" sideOffset={8} collisionPadding={8}>
+                                        <CalendarComponent
+                                            mode="single"
+                                            selected={dueDate}
+                                            onSelect={setDueDate}
+                                            initialFocus
+                                            fromDate={new Date()}
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+                        </div>
                         {/* Status and Priority Section */}
                         <div className="space-y-4 pt-2 border-t">
                             <div className="mb-2">
@@ -308,7 +359,7 @@ export function CreateTaskSheet({
                                     Set the current status and importance level of this task.
                                 </p>
                             </div>
-                            
+
                             {/* Status */}
                             <div className="space-y-2">
                                 <Label htmlFor="status" className="text-sm font-medium">Status</Label>
@@ -356,47 +407,7 @@ export function CreateTaskSheet({
                             </div>
                         </div>
 
-                        {/* Assignment and Timeline Section */}
-                        <div className="space-y-4 pt-2 border-t">
-                            <div className="mb-2">
-                                <h3 className="text-lg font-bold">Assignment and Timeline</h3>
-                                <p className="text-muted-foreground text-sm">
-                                    Assign the task to a team member and set a due date.
-                                </p>
-                            </div>
-                            
-                            {/* Assignee */}
-                            <div className="space-y-2">
-                                <UserSelect
-                                    value={assigneeId}
-                                    onChange={setAssigneeId}
-                                    options={userOptions}
-                                    label="Assignee"
-                                />
-                            </div>
-                            
-                            {/* Due Date */}
-                            <div className="space-y-2">
-                                <Label htmlFor="due-date" className="text-sm font-medium">Due Date</Label>
-                                <div className="w-full flex justify-center">
-                                    <CalendarComponent
-                                        mode="single"
-                                        selected={dueDate}
-                                        onSelect={setDueDate}
-                                        disabled={[{ before: new Date() }]}
-                                        className="rounded-md border shadow-sm"
-                                        showOutsideDays={false}
-                                        fixedWeeks={false}
-                                        ISOWeek={false}
-                                    />
-                                </div>
-                                {dueDate && (
-                                    <p className="text-sm text-muted-foreground text-center">
-                                        Selected date: {format(dueDate, "PPP")}
-                                    </p>
-                                )}
-                            </div>
-                        </div>
+                      
 
                         <Button type="submit" className="w-full" disabled={loading}>
                             {loading ? "Creating..." : "Create Task"}

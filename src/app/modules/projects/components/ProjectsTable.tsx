@@ -327,38 +327,66 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
                 );
             },
         },
+       
         {
-            accessorKey: "startDate",
+            accessorKey: "category",
             header: ({ column }) => (
-                <DataTableColumnHeader column={column} title="Start Date" />
+                <DataTableColumnHeader column={column} title="Category" />
             ),
             cell: ({ row }) => {
-                const date = row.original.startDate;
-                return (
-                    <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        {formatDate(date)}
-                    </div>
-                );
-            },
-        },
-        {
-            accessorKey: "endDate",
-            header: ({ column }) => (
-                <DataTableColumnHeader column={column} title="End Date" />
-            ),
-            cell: ({ row }) => {
-                const date = row.original.endDate;
-                return (
-                    <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        {date ? formatDate(date) : "Not set"}
-                    </div>
+                const category = row.getValue("category") as string;
+                return category ? (
+                    <Badge variant="secondary" className="px-2 py-1">
+                        {category}
+                    </Badge>
+                ) : (
+                    <span className="text-muted-foreground text-sm">No category</span>
                 );
             },
         },
 
-        /* {
+        {
+            accessorKey: "tags",
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title="Tags" />
+            ),
+            cell: ({ row }) => {
+                const tags = row.getValue("tags") as string[];
+                const maxVisibleTags = 1;
+
+                if (!tags || tags.length === 0) {
+                    return <span className="text-muted-foreground text-sm">No tags</span>;
+                }
+
+                const visibleTags = tags.slice(0, maxVisibleTags);
+                const remainingTags = tags.slice(maxVisibleTags);
+
+                return (
+                    <div className="flex items-center gap-1 overflow-hidden whitespace-nowrap">
+                        {visibleTags.map((tag, index) => (
+                            <Badge key={index} className="px-1 py-0.5 text-xs">
+                                {tag}
+                            </Badge>
+                        ))}
+                        {remainingTags.length > 0 && (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger>
+                                        <Badge className="px-1 py-0.5 text-xs">
+                                            +{remainingTags.length} more
+                                        </Badge>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <span>{remainingTags.join(", ")}</span>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        )}
+                    </div>
+                );
+            },
+        }, 
+        {
             accessorKey: "createdBy",
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Created By" />
@@ -399,7 +427,7 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
                     </div>
                 );
             },
-        }, */
+        },
         {
             accessorKey: "status",
             header: ({ column }) => (
@@ -514,85 +542,59 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
                 };
         
                 const progressClass = getProgressColor(progress);
+        
                 return (
-                    <div className="w-[150px] relative">
-                        <div className="relative">
-                            <div className={`w-full h-4 rounded-md overflow-hidden border-2 ${progressClass.replace('bg-', 'border-')}`}>
-                                <div
-                                    className={`h-full ${progressClass} transition-all duration-300`}
-                                    style={{ width: `${progress}%` }}
-                                />
-                            </div>
-                            <span className="absolute inset-0 text-xs font-medium flex items-center justify-center">
-                                {progress}%
-                            </span>
+                    <div className="w-[150px] flex items-center gap-2">
+                        {/* Thinner Progress Bar (no border) */}
+                        <div className="relative w-full h-2 rounded-md overflow-hidden bg-gray-200 dark:bg-gray-700">
+                            <div
+                                className={`h-full ${progressClass} transition-all duration-300`}
+                                style={{ width: `${progress}%` }}
+                            />
                         </div>
+        
+                        {/* Percentage Text - Right-aligned, smaller font */}
+                        <span className="text-[10px] font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                            {progress}%
+                        </span>
                     </div>
                 );
             },
         },
-        
-
-        /*   {
-              accessorKey: "category",
-              header: ({ column }) => (
-                  <DataTableColumnHeader column={column} title="Category" />
-              ),
-              cell: ({ row }) => {
-                  const category = row.getValue("category") as string;
-                  return category ? (
-                      <Badge variant="secondary" className="px-2 py-1">
-                          {category}
-                      </Badge>
-                  ) : (
-                      <span className="text-muted-foreground text-sm">No category</span>
-                  );
-              },
-          },
-  
-          {
-              accessorKey: "tags",
-              header: ({ column }) => (
-                  <DataTableColumnHeader column={column} title="Tags" />
-              ),
-              cell: ({ row }) => {
-                  const tags = row.getValue("tags") as string[];
-                  const maxVisibleTags = 1;
-  
-                  if (!tags || tags.length === 0) {
-                      return <span className="text-muted-foreground text-sm">No tags</span>;
-                  }
-  
-                  const visibleTags = tags.slice(0, maxVisibleTags);
-                  const remainingTags = tags.slice(maxVisibleTags);
-  
-                  return (
-                      <div className="flex items-center gap-1 overflow-hidden whitespace-nowrap">
-                          {visibleTags.map((tag, index) => (
-                              <Badge key={index} className="px-1 py-0.5 text-xs">
-                                  {tag}
-                              </Badge>
-                          ))}
-                          {remainingTags.length > 0 && (
-                              <TooltipProvider>
-                                  <Tooltip>
-                                      <TooltipTrigger>
-                                          <Badge className="px-1 py-0.5 text-xs">
-                                              +{remainingTags.length} more
-                                          </Badge>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                          <span>{remainingTags.join(", ")}</span>
-                                      </TooltipContent>
-                                  </Tooltip>
-                              </TooltipProvider>
-                          )}
-                      </div>
-                  );
-              },
-          }, */
-
         {
+            accessorKey: "startDate",
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title="Start Date" />
+            ),
+            cell: ({ row }) => {
+                const date = row.original.startDate;
+                return (
+                    <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        {formatDate(date)}
+                    </div>
+                );
+            },
+        },
+        {
+            accessorKey: "endDate",
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title="End Date" />
+            ),
+            cell: ({ row }) => {
+                const date = row.original.endDate;
+                return (
+                    <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        {date ? formatDate(date) : "Not set"}
+                    </div>
+                );
+            },
+        },
+
+         
+
+       /*  {
             accessorKey: "updatedAt",
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Last Updated" />
@@ -606,7 +608,7 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
                     </div>
                 );
             },
-        },
+        }, */
         // Modify the actions column to include the "Add Task" option
         {
             id: "actions",
