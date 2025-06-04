@@ -55,6 +55,35 @@ const BlockEditor = ({ onChange, initialContent, editable }: EditorProps) => {
     borderRadius: 4, // Rounded corners
     fontFamily: "Arial, sans-serif", // Custom font
   };
+
+  // Custom light theme
+  const customLightTheme: Theme = {
+    colors: {
+      editor: {
+        text: "#000000", // Black text
+        background: "#f6f6f6", // Light gray background
+      },
+      menu: {
+        text: "#000000", // Black text
+        background: "#f6f6f6", // Light gray menu background
+      },
+      tooltip: {
+        text: "#000000", // Black text
+        background: "#f6f6f6", // Light gray tooltip background
+      },
+      hovered: {
+        text: "#000000", // Black text
+        background: "#e0e0e0", // Slightly darker gray for hover
+      },
+      selected: {
+        text: "#000000", // Black text
+        background: "#d0d0d0", // Even darker gray for selected
+      },
+    },
+    borderRadius: 4, // Rounded corners
+    fontFamily: "Arial, sans-serif", // Custom font
+  };
+
   // Initialize the editor
   const editor = useCreateBlockNote({
     uploadFile: handleUpload,
@@ -96,12 +125,12 @@ const BlockEditor = ({ onChange, initialContent, editable }: EditorProps) => {
 
   return (
     <div
-      className="overflow-y-auto h-full p-4 scrollbar-hide" // Added scrollbar-hide class
+      className="overflow-y-auto h-full p-4 scrollbar" // Added scrollbar-hide class
     >
       <BlockNoteView
         editor={editor}
         editable={editable}
-        theme={resolvedTheme === "dark" ? customDarkTheme : "light"}
+        theme={resolvedTheme === "dark" ? customDarkTheme : customLightTheme} // Use custom light theme
         onChange={handleEditorChange}
       />
     </div>

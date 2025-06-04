@@ -66,14 +66,21 @@ export const getActivitiesByCompany = query({
 export const getActivitiesByTargetType = query({
     args: {
         targetType: v.string(),
+        targetId: v.optional(v.string()), // Make it optional to maintain backward compatibility
     },
     handler: async (ctx, args) => {
         const authUserId = await getAuthUserId(ctx);
         if (!authUserId) throw new Error("User not authenticated");
 
-        return await ctx.db
+        let query = ctx.db
             .query("recentActivity")
-            .filter((q) => q.eq(q.field("targetType"), args.targetType))
+            .filter((q) => q.eq(q.field("targetType"), args.targetType));
+
+        if (args.targetId) {
+            query = query.filter((q) => q.eq(q.field("targetId"), args.targetId));
+        }
+
+        return await query
             .order("desc")
             .collect();
     },

@@ -29,11 +29,11 @@ export function EmptyState({
           <img
             src={imageSrc}
             alt="Blank State"
-            className="w-40 h-40 object-contain" // Made the image larger
+            className="w-60 h-60 object-contain" // Made the image larger
           />
         </div>
       )}
-      <h2 className="text-foreground font-medium mt-6">
+      <h2 className="text-foreground font-medium mt-0">
         <strong>{title}</strong>
       </h2>
       <p className="text-sm text-muted-foreground mt-1 whitespace-pre-line">

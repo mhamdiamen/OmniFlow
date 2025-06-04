@@ -40,6 +40,8 @@ export default function ProjectsPage() {
   return (
     <AdminPanelLayout>
       <ContentLayout title="Projects & Tasks Management">
+        
+
         {/* Projects Section */}
         <div className="mb-12">
           <div className="flex justify-between items-center mb-4">
@@ -57,7 +59,7 @@ export default function ProjectsPage() {
           </div>
           <ProjectsTable projects={projects} />
         </div>
-        
+
         {/* Tasks Section */}
         <div>
           <div className="flex justify-between items-center mb-4">
@@ -67,15 +69,15 @@ export default function ProjectsPage() {
                 View and manage tasks across all your projects
               </p>
             </div>
-       
+
           </div>
           <TasksTable tasks={tasks} />
         </div>
-        
+
         {/* Create Task Sheet */}
-        <CreateTaskSheet 
-          open={createTaskOpen} 
-          onOpenChange={setCreateTaskOpen} 
+        <CreateTaskSheet
+          open={createTaskOpen}
+          onOpenChange={setCreateTaskOpen}
         />
       </ContentLayout>
     </AdminPanelLayout>

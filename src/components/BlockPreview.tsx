@@ -42,6 +42,34 @@ const BlockPreview = ({ content }: BlockPreviewProps) => {
     fontFamily: "Arial, sans-serif", // Custom font
   };
 
+  // Custom light theme
+  const customLightTheme: Theme = {
+    colors: {
+      editor: {
+        text: "#000000", // Black text
+        background: "#f6f6f6", // Light gray background
+      },
+      menu: {
+        text: "#000000", // Black text
+        background: "#f6f6f6", // Light gray menu background
+      },
+      tooltip: {
+        text: "#000000", // Black text
+        background: "#f6f6f6", // Light gray tooltip background
+      },
+      hovered: {
+        text: "#000000", // Black text
+        background: "#e0e0e0", // Slightly darker gray for hover
+      },
+      selected: {
+        text: "#000000", // Black text
+        background: "#d0d0d0", // Even darker gray for selected
+      },
+    },
+    borderRadius: 4, // Rounded corners
+    fontFamily: "Arial, sans-serif", // Custom font
+  };
+
   // Initialize the editor with default content
   const editor = useCreateBlockNote({
     initialContent: content ? JSON.parse(content) : undefined,
@@ -66,7 +94,7 @@ const BlockPreview = ({ content }: BlockPreviewProps) => {
       <BlockNoteView
         editor={editor}
         editable={false} // Make the editor non-editable
-        theme={resolvedTheme === "dark" ? customDarkTheme : "light"} // Use the same theme approach as BlockEditor
+        theme={resolvedTheme === "dark" ? customDarkTheme : customLightTheme} // Use custom light theme
       />
     </div>
   );

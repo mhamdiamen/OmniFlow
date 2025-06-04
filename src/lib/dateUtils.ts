@@ -5,18 +5,23 @@ import { formatDistanceToNow, parseISO } from "date-fns";
  * @param dateString - The date string (e.g., "2023-10-01T12:34:56Z").
  * @returns A formatted "time ago" string (e.g., "2 hours ago").
  */
-export function formatTimeAgo(dateString: string | undefined): string {
-  if (!dateString) {
-    return "Just now"; // Fallback for missing or undefined date
+export function formatTimeAgo(date: string | Date | undefined): string {
+  if (!date) return "Just now";
+
+  let parsedDate: Date;
+
+  if (typeof date === "string") {
+    try {
+      parsedDate = parseISO(date);
+    } catch {
+      console.warn("Invalid date string:", date);
+      return "Just now";
+    }
+  } else {
+    parsedDate = date;
   }
 
-  try {
-    const date = parseISO(dateString);
-    return formatDistanceToNow(date, { addSuffix: true });
-  } catch (error) {
-    console.error("Invalid date string:", dateString);
-    return "Just now"; // Fallback for invalid date strings
-  }
+  return formatDistanceToNow(parsedDate, { addSuffix: true });
 }
 
 /**

@@ -48,3 +48,5 @@ export type EnrichedChapter = {
   wordCount?: number; // Optional
   isDraft?: boolean;  // Optional
 };
+
+export type ReactionType = "heart" | "thumbs_up" | "thumbs_down"; // Add more as needed

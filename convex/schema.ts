@@ -186,7 +186,7 @@ const schema = defineSchema({
     // New fields for categorization
     tags: v.optional(v.array(v.string())),
     category: v.optional(v.string()),
-    
+
     // New fields for project health and priority
     healthStatus: v.optional(v.union(
       v.literal("on_track"),
@@ -199,12 +199,12 @@ const schema = defineSchema({
       v.literal("high"),
       v.literal("critical")
     )),
-    
+
     // New fields for progress tracking
     progress: v.optional(v.number()), // Percentage from 0-100
     completedTasks: v.optional(v.number()), // Number of completed tasks
     totalTasks: v.optional(v.number()), // Total number of tasks
-    
+
     startDate: v.float64(),
     endDate: v.optional(v.float64()),
     createdBy: v.id("users"),
@@ -240,11 +240,44 @@ const schema = defineSchema({
     createdBy: v.id("users"),
     completedAt: v.optional(v.float64()),
     completedBy: v.optional(v.id("users")),
+    
   })
     .index("projectId", ["projectId"])
     .index("assigneeId", ["assigneeId"])
     .index("status", ["status"])
     .index("dueDate", ["dueDate"]),
+
+  // Inside your schema.ts file
+  comments: defineTable({
+    // Who posted the comment
+    authorId: v.id("users"),
+
+    // Where is this comment posted?
+    targetId: v.string(),     // ID of the target (e.g., projectId, taskId, postId)
+    targetType: v.string(),   // Type of target (e.g., "project", "task", "post")
+
+    // Content
+    body: v.string(),         // Markdown or plain text
+
+    // For threaded comments (replies)
+    parentId: v.optional(v.id("comments")), // Important: make this optional
+
+    // Metadata
+    createdAt: v.float64(),
+    updatedAt: v.optional(v.float64()),
+
+    // Reactions like 👍, ❤️, 😱 etc.
+    reactions: v.optional(
+      v.record(v.string(), v.array(v.id("users"))) // e.g. { "👍": ["user1", "user2"] }
+    ),
+
+    // Mentioned users
+    mentionedUserIds: v.optional(v.array(v.id("users"))),
+  })
+    .index("target", ["targetId", "targetType"]) // Efficient lookup by target
+    .index("author", ["authorId"])                // Find user's comments
+    .index("by_target_and_parent", ["targetId", "targetType", "parentId"]) // NEW INDEX
+    .index("parent", ["parentId"]),               // Find all replies to a comment
 
   milestones: defineTable({
     projectId: v.id("projects"),

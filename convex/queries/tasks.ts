@@ -112,7 +112,6 @@ export const getTaskById = query({
   },
 });
 
-// Fetch tasks assigned to a specific user
 export const fetchTasksByAssignee = query({
   args: { 
     assigneeId: v.id("users"),
@@ -137,9 +136,8 @@ export const fetchTasksByAssignee = query({
     
     const tasks = await tasksQuery.collect();
     
-    // Fetch project details for each task
+    // Fetch project details
     const projectIds = [...new Set(tasks.map(task => task.projectId))];
-    
     const projects = await Promise.all(
       projectIds.map(id => ctx.db.get(id))
     );
@@ -150,9 +148,13 @@ export const fetchTasksByAssignee = query({
         .map(project => [project!._id, project])
     );
     
-    // Return tasks with project details
+    // Fetch assignee details
+    const assignee = await ctx.db.get(assigneeId);
+    
+    // Return tasks with both project and assignee details
     return tasks.map(task => ({
       ...task,
+      assignee: assignee || null,  // Ensure assignee is either User object or null
       projectDetails: projectMap.get(task.projectId)
     }));
   },

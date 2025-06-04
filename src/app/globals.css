@@ -247,3 +247,18 @@ body {
   background-color: hsl(var(--primary)) !important;
   border-color: hsl(var(--primary)) !important;
 }
+
+
+
+.mention-input {
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.mention {
+  background-color: #e0f7ff;
+  color: #0077b6;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
