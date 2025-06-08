@@ -651,13 +651,66 @@ export const updateTaskStatus = mutation({
   handler: async (ctx, args) => {
     const { taskId, status } = args;
     
-    // Get current user
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
 
-    // Update the task status
-    await ctx.db.patch(taskId, { status });
+    // Get current task
+    const task = await ctx.db.get(taskId);
+    if (!task) throw new Error("Task not found");
 
-    return taskId; // Return the task ID as string
+    const oldStatus = task.status;
+    const isCompletingTask = status === "completed" && task.status !== "completed";
+    const isUncompletingTask = task.status === "completed" && status !== "completed";
+
+    const updateObj: any = { status };
+
+    // Handle completion logic
+    if (isCompletingTask) {
+      updateObj.completedAt = Date.now();
+      updateObj.completedBy = userId;
+    } else if (isUncompletingTask) {
+      updateObj.completedAt = undefined;
+      updateObj.completedBy = undefined;
+    }
+
+    await ctx.db.patch(taskId, updateObj);
+
+    // Create activity log
+    if (status !== oldStatus) {
+      const project = await ctx.db.get(task.projectId);
+      await createActivityForUser(ctx, {
+        userId,
+        actionType: "Updated Task Status",
+        targetId: taskId,
+        targetType: "task",
+        description: `Changed status from ${oldStatus} to ${status} for task "${task.name}"`,
+        metadata: {
+          taskId,
+          projectId: task.projectId,
+          oldStatus,
+          newStatus: status,
+          projectName: project?.name || ""
+        }
+      });
+    }
+
+    // Update project stats if needed
+    if (isCompletingTask || isUncompletingTask) {
+      const project = await ctx.db.get(task.projectId);
+      if (project) {
+        const newCompletedTasks = Math.max(
+          0,
+          (project.completedTasks || 0) + (isCompletingTask ? 1 : -1)
+        );
+        await ctx.db.patch(task.projectId, {
+          completedTasks: newCompletedTasks,
+          progress: project.totalTasks
+            ? Math.round(newCompletedTasks / project.totalTasks * 100)
+            : 0
+        });
+      }
+    }
+
+    return taskId;
   }
 });

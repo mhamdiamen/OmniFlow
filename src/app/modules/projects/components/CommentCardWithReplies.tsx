@@ -345,13 +345,14 @@ export function CommentCardWithReplies({ comment }: { comment: CommentWithDetail
                                 placeholder="Edit your comment..."
                                 showAvatar={false}
                                 onSend={handleEdit}
-                                projectId={comment.targetType === "project" ? comment.targetId as Id<"projects"> : undefined}
+                                targetId={comment.targetType === "project" ? (comment.targetId as Id<"projects">) : undefined}
+                                targetType={comment.targetType}
                             />
                         </div>
                     ) : (
-                        <p className="mt-1 text-sm whitespace-pre-line">
+                        <div  className="mt-1 text-sm whitespace-pre-line">
                             {parseCommentBody(comment.body, comment.mentionedUserIds, teamMembers)}
-                        </p>
+                        </div >
                     )}
                     <div className="flex items-center gap-3 mt-4 text-xs text-muted-foreground">
                         <div className="flex items-center gap-0.5">
@@ -454,8 +455,9 @@ export function CommentCardWithReplies({ comment }: { comment: CommentWithDetail
                             userAvatarUrl={currentUser?.image}
                             userName={currentUser?.name || "You"}
                             onSend={handleReply}
-                            projectId={comment.targetType === "project" ? comment.targetId as Id<"projects"> : undefined}
-                        />
+                            targetId={comment.targetType === "project" ? (comment.targetId as Id<"projects">) : undefined}
+                            targetType={comment.targetType}
+                    />
                     </div>
                 )
             }

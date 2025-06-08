@@ -502,7 +502,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
 
               {/* Tab Content: Comments */}
-              <CommentsTab projectId={projectId} />
+              <CommentsTab targetId={projectId} targetType="project" />
 
             </Tabs>
           </div>

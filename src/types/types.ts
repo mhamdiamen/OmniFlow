@@ -1,4 +1,27 @@
 import { UniqueIdentifier } from "@dnd-kit/core";
+export type CalendarView = "month" | "week" | "day" | "agenda"
+
+export interface CalendarEvent {
+  id: string
+  title: string
+  description?: string
+  start: Date
+  end: Date
+  allDay?: boolean
+  color?: EventColor
+  location?: string
+}
+
+export type EventColor =
+  | "sky"
+  | "amber"
+  | "violet"
+  | "rose"
+  | "emerald"
+  | "orange"
+
+
+
 
 export interface User {
     _id: string;
@@ -21,10 +44,8 @@ export interface Task {
     assigneeId?: string;
     assignee: User | null;  // Changed to allow null
     projectId?: string;
-    projectDetails?: {
-        _id: string;
-        name: string;
-    };
+    projectDetails?: { _id: string; name: string } | null;
+
 }
 
 

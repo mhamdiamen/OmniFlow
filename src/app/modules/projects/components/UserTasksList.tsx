@@ -19,12 +19,14 @@ export function UserTasksList() {
 
     // Get current user
     const currentUser = useQuery(api.users.CurrentUser);
-    
-    // Fetch tasks assigned to current user
+
     const userTasks = useQuery(
         api.queries.tasks.fetchTasksByAssignee,
-        currentUser?._id 
-            ? { assigneeId: currentUser._id as Id<"users"> } 
+        currentUser?._id && projectId
+            ? {
+                assigneeId: currentUser._id as Id<"users">,
+                projectId: projectId as Id<"projects">
+            }
             : "skip"
     );
 

@@ -16,10 +16,11 @@ import { toast } from "sonner";
 
 // Define props for CommentsTab
 type CommentsTabProps = {
-    projectId: Id<"projects">;
+    targetId: Id<"projects"> | Id<"tasks"> | Id<any>; // Expandable
+    targetType: "project" | "task" | string;
 };
 
-export function CommentsTab({ projectId }: CommentsTabProps) {
+export function CommentsTab({ targetId, targetType }: CommentsTabProps) {
     const { data: user, isLoading: isLoadingUser } = useCurrentUser();
     const [commentText, setCommentText] = useState("");
     const [sortBy, setSortBy] = useState<CommentSortOption>("newest");
@@ -28,14 +29,16 @@ export function CommentsTab({ projectId }: CommentsTabProps) {
     const createComment = useMutation(api.mutations.comments.createComment);
 
     // Fetch team members for mentions
-    const teamMembers = useQuery(api.queries.teams.fetchTeamMembersByProject, {
-        projectId
-    });
+    const teamMembers = targetType === "project"
+        ? useQuery(api.queries.teams.fetchTeamMembersByProject, {
+            projectId: targetId as Id<"projects">
+        })
+        : undefined;
 
-    // Fetch all comments for this project
+
     const commentsResult = useQuery(api.queries.comments.getCommentsByTarget, {
-        targetId: projectId,
-        targetType: "project",
+        targetId,
+        targetType,
     });
 
     // Sort comments based on the selected option
@@ -121,8 +124,8 @@ export function CommentsTab({ projectId }: CommentsTabProps) {
 
             await createComment({
                 authorId: user._id as Id<"users">,
-                targetId: projectId,
-                targetType: "project",
+                targetId,
+                targetType,
                 body: commentText,
                 parentId: undefined,
                 mentionedUserIds: validMentionedUserIds,
@@ -142,7 +145,7 @@ export function CommentsTab({ projectId }: CommentsTabProps) {
         }, 0)
         : 0;
 
-        
+
     return (
         <TabsContent value="comments">
             {/* Input for new comment */}
@@ -155,8 +158,10 @@ export function CommentsTab({ projectId }: CommentsTabProps) {
                     userName={user?.name}
                     isLoadingUser={isLoadingUser}
                     onSend={handleSend}
-                    projectId={projectId} // Add this to enable mentions
+                    targetId={targetId} // ✅ renamed
+                    targetType={targetType} // ✅ optionally pass this too
                 />
+
             </div>
 
             {/* Comment sorting controls and list */}

@@ -24,7 +24,8 @@ interface InputWithActionsProps {
   isLoadingUser?: boolean
   showAvatar?: boolean
   onSend?: () => void
-  projectId?: string
+  targetId?: Id<any>;
+  targetType?: string;
 }
 
 export function InputWithActions({
@@ -36,7 +37,8 @@ export function InputWithActions({
   isLoadingUser = false,
   showAvatar = true,
   onSend = () => { },
-  projectId,
+  targetId,
+  targetType,
 }: InputWithActionsProps) {
   const [isGenerating, setIsGenerating] = useState(false)
   const timeout = useRef<number | null>(null)
@@ -46,8 +48,9 @@ export function InputWithActions({
 
   const teamMembers = useQuery(
     api.queries.teams.fetchTeamMembersByProject,
-    projectId ? { projectId: projectId as Id<"projects"> } : "skip"
-  )
+    targetType === "project" ? { projectId: targetId as Id<"projects"> } : "skip"
+  );
+  
   const cancelTimeout = () => {
     if (timeout.current) {
       clearTimeout(timeout.current)

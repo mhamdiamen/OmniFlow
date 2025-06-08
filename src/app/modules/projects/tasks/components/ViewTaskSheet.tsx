@@ -10,7 +10,7 @@ import {
     SheetTitle,
 } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
-import { ClipboardList, Calendar, Flag, CheckCircle2, User, Info, UsersRound } from "lucide-react";
+import { ClipboardList, Calendar, Flag, CheckCircle2, User, Info, UsersRound, MessageSquare } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../../convex/_generated/api";
 import { Id } from "../../../../../../convex/_generated/dataModel";
@@ -19,6 +19,8 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/dateUtils";
+import { CommentsTab } from "../../components/CommentsTab";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface ViewTaskSheetProps {
     taskId: Id<"tasks"> | null;
@@ -73,9 +75,8 @@ export function ViewTaskSheet({
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent
-                className="overflow-y-auto sm:max-w-md md:max-w-lg lg:max-w-xl"
-            >
+            <SheetContent className="overflow-y-auto sm:max-w-2xl md:max-w-3xl lg:max-w-4xl">
+
                 <SheetHeader className="pb-4">
                     <SheetTitle className="flex items-center gap-2 text-2xl font-bold">
                         <ClipboardList className="h-6 w-6" />
@@ -233,44 +234,48 @@ export function ViewTaskSheet({
                                 )}
                             </div>
                         </div>
-                        {/* Completed Information */}
-                        {/*   {task.status === "completed" && task.completedAt && (
+
+                        {/* Comments Section */}
+                        <div className="mt-8 border-t pt-6 space-y-4">
+                            {/* Header section above tabs */}
                             <div className="flex items-center gap-4">
-                                <Label className="text-lg font-semibold w-32">Completed</Label>
-                                <div className="flex items-center space-x-2">
-                                    {task.completerDetails && (
-                                        <>
-                                            <Avatar className="h-8 w-8 border-2">
-                                                {task.completerDetails.image ? (
-                                                    <AvatarImage
-                                                        src={task.completerDetails.image}
-                                                        alt={task.completerDetails.name || task.completerDetails.email}
-                                                    />
-                                                ) : null}
-                                                <AvatarFallback>
-                                                    {task.completerDetails.email?.[0]?.toUpperCase() || task.completerDetails.name?.[0]?.toUpperCase() || '?'}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex flex-col">
-                                                <span className="font-medium">{task.completerDetails.name || task.completerDetails.email}</span>
-                                                <span className="text-xs text-muted-foreground">
-                                                    {format(new Date(task.completedAt), "PPP")}
-                                                </span>
-                                            </div>
-                                        </>
-                                    )}
+                                <MessageSquare className="h-8 w-8" />
+                                <div>
+                                    <h3 className="text-lg font-semibold">Task Discussions</h3>
+                                    <p className="text-sm text-muted-foreground">Collaborate with your team</p>
                                 </div>
                             </div>
-                        )}
- */}
 
+                            {/* Tabs section below header */}
+                            <Tabs defaultValue="comments" className="w-full">
+                                <TabsList className="grid grid-cols-3 w-full mb-4">
+                                    <TabsTrigger value="comments">Comments</TabsTrigger>
+                                    <TabsTrigger value="activity">Activity</TabsTrigger>
+                                    <TabsTrigger value="attachments">Attachments</TabsTrigger>
+                                </TabsList>
 
-                        {/* Close Button */}
-                        <div className="flex justify-end pt-4">
-                            <Button onClick={() => onOpenChange(false)}>
-                                Close
-                            </Button>
+                                {taskId && (
+                                    <CommentsTab
+                                        targetId={taskId}
+                                        targetType="task"
+                                    />
+                                )}
+
+                                <TabsContent value="activity">
+                                    <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
+                                        <p>Activity log will appear here</p>
+                                    </div>
+                                </TabsContent>
+
+                                <TabsContent value="attachments">
+                                    <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
+                                        <p>File attachments will appear here</p>
+                                    </div>
+                                </TabsContent>
+                            </Tabs>
                         </div>
+
+
                     </div>
                 ) : (
                     // Loading state

@@ -115,6 +115,7 @@ export const getTaskById = query({
 export const fetchTasksByAssignee = query({
   args: { 
     assigneeId: v.id("users"),
+    projectId: v.id("projects"),
     status: v.optional(v.union(
       v.literal("todo"),
       v.literal("in_progress"),
@@ -124,38 +125,31 @@ export const fetchTasksByAssignee = query({
     )),
   },
   handler: async (ctx, args) => {
-    const { assigneeId, status } = args;
-    
+    const { assigneeId, projectId, status } = args;
+
     let tasksQuery = ctx.db
       .query("tasks")
       .withIndex("assigneeId", (q) => q.eq("assigneeId", assigneeId));
-    
+
+    // Filter by projectId
+    tasksQuery = tasksQuery.filter(q => q.eq(q.field("projectId"), projectId));
+
     if (status) {
       tasksQuery = tasksQuery.filter(q => q.eq(q.field("status"), status));
     }
-    
+
     const tasks = await tasksQuery.collect();
-    
+
     // Fetch project details
-    const projectIds = [...new Set(tasks.map(task => task.projectId))];
-    const projects = await Promise.all(
-      projectIds.map(id => ctx.db.get(id))
-    );
-    
-    const projectMap = new Map(
-      projects
-        .filter(project => project !== null)
-        .map(project => [project!._id, project])
-    );
-    
+    const project = await ctx.db.get(projectId);
+
     // Fetch assignee details
     const assignee = await ctx.db.get(assigneeId);
-    
-    // Return tasks with both project and assignee details
+
     return tasks.map(task => ({
       ...task,
-      assignee: assignee || null,  // Ensure assignee is either User object or null
-      projectDetails: projectMap.get(task.projectId)
+      assignee: assignee || null,
+      projectDetails: project || null,
     }));
   },
 });
@@ -297,6 +291,65 @@ export const fetchAllTasks = query({
       ...task,
       assigneeDetails: task.assigneeId ? userMap.get(task.assigneeId) : null,
       projectDetails: projectMap.get(task.projectId) || null
+    }));
+  },
+});
+export const fetchAllTasksByAssignee = query({
+  args: { 
+    assigneeId: v.id("users"),
+    status: v.optional(v.union(
+      v.literal("todo"),
+      v.literal("in_progress"),
+      v.literal("completed"),
+      v.literal("on_hold"),
+      v.literal("canceled")
+    )),
+    priority: v.optional(v.union(
+      v.literal("low"),
+      v.literal("medium"),
+      v.literal("high"),
+      v.literal("urgent")
+    )),
+  },
+  handler: async (ctx, args) => {
+    const { assigneeId, status, priority } = args;
+
+    // Start with base query for tasks assigned to this user
+    let tasksQuery = ctx.db
+      .query("tasks")
+      .withIndex("assigneeId", (q) => q.eq("assigneeId", assigneeId));
+
+    // Apply optional filters
+    if (status) {
+      tasksQuery = tasksQuery.filter(q => q.eq(q.field("status"), status));
+    }
+
+    if (priority) {
+      tasksQuery = tasksQuery.filter(q => q.eq(q.field("priority"), priority));
+    }
+
+    const tasks = await tasksQuery.collect();
+
+    // Get unique project IDs from tasks
+    const projectIds = [...new Set(tasks.map(task => task.projectId))];
+    
+    // Fetch all related projects
+    const projects = await Promise.all(
+      projectIds.map(id => ctx.db.get(id))
+    );
+
+    // Create a project map for easy lookup
+    const projectMap = new Map(
+      projects.filter(p => p !== null).map(p => [p!._id, p])
+    );
+
+    // Fetch assignee details (just the current user in this case)
+    const assignee = await ctx.db.get(assigneeId);
+
+    return tasks.map(task => ({
+      ...task,
+      projectDetails: projectMap.get(task.projectId) || null,
+      assigneeDetails: assignee || null
     }));
   },
 });

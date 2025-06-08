@@ -8,6 +8,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Task } from "@/types/types";
 import { TaskCard } from "./TaskCard";
+import { FilePlus } from "lucide-react";
 
 export interface Column {
   id: UniqueIdentifier;
@@ -25,9 +26,11 @@ interface BoardColumnProps {
   column: Column;
   tasks: Task[];
   isOverlay?: boolean;
+  onTaskClick?: (taskId: string) => void; // Add onTaskClick prop
+
 }
 
-export const BoardColumn = ({ column, tasks, isOverlay }: BoardColumnProps) => {
+export const BoardColumn = ({ column, tasks, isOverlay, onTaskClick }: BoardColumnProps) => {
   const taskIds = useMemo(() => {
     return tasks.map((task) => task._id);
   }, [tasks]);
@@ -49,45 +52,72 @@ export const BoardColumn = ({ column, tasks, isOverlay }: BoardColumnProps) => {
   };
 
   const variants = cva(
-    "h-full w-[300px] bg-primary-foreground flex flex-col flex-shrink-0 snap-center mt-4 overflow-y-auto",
+    " max-w-[300px] bg-primary-foreground flex flex-col flex-shrink-0 overflow-y-auto",
     {
       variants: {
         dragging: {
           default: "border-2 border-transparent",
           over: "ring-2 opacity-30",
           overlay: "ring-2 ring-primary",
-          active: "bg-accent/20 border-dashed border-primary" // Added for hover effect
+          active: "bg-accent/20 border-dashed border-primary"
         }
       }
     }
   );
+
+  // Define column header colors based on column ID
+  const getColumnHeaderColor = (columnId: string) => {
+    const colorMap: Record<string, string> = {
+      todo: 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700',
+      in_progress: 'bg-blue-100 dark:bg-blue-900 border-blue-200 dark:border-blue-800',
+      completed: 'bg-green-100 dark:bg-green-900 border-green-200 dark:border-green-800',
+      on_hold: 'bg-yellow-100 dark:bg-yellow-900 border-yellow-200 dark:border-yellow-800',
+      canceled: 'bg-red-100 dark:bg-red-900 border-red-200 dark:border-red-800'
+    };
+
+    return colorMap[columnId] || 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700';
+  };
+
+  const headerColorClass = getColumnHeaderColor(column.id.toString());
 
   return (
     <Card
       ref={setNodeRef}
       style={style}
       className={variants({
-        dragging: isOverlay 
-          ? "overlay" 
-          : isDragging 
-            ? "over" 
-            : isOver 
-              ? "active" 
+        dragging: isOverlay
+          ? "overlay"
+          : isDragging
+            ? "over"
+            : isOver
+              ? "active"
               : undefined,
       })}>
-      <CardHeader className="p-4 font-semibold border-b-2 bg-gray-100 dark:bg-zinc-800 flex flex-row items-center justify-between">
-        <h1>{column.title}</h1>
-        <Badge variant="outline">{tasks.length}</Badge>
+      <CardHeader className={`p-4 font-semibold border-b-2 ${headerColorClass} flex flex-row items-center justify-between`}>
+        <div className="flex items-center gap-3">
+          <h1 className="font-bold text-base">{column.title}</h1>
+          <Badge className="h-5 w-5 flex items-center justify-center p-0">
+            {tasks.length}
+          </Badge>
+        </div>
       </CardHeader>
       <ScrollArea>
         <CardContent className="flex flex-grow flex-col gap-2 p-2">
           <SortableContext items={taskIds}>
             {tasks.length === 0 ? (
-              <div className="flex flex-grow items-center justify-center">
-                <p className="text-gray-400">No tasks here.</p>
+              <div className="flex flex-grow flex-col items-center justify-center text-center rounded-xl border border-dashed border-gray-500 p-6 ">
+                <FilePlus className="h-10 w-10 mb-3 text-gray-500" />
+                <p className="text-sm font-medium text-gray-500">No tasks yet</p>
+                <p className="text-xs text-gray-400">Start by dragging new task here.</p>
               </div>
             ) : (
-              tasks.map((task) => <TaskCard key={task._id} task={task} />)
+              tasks.map((task) => (
+                <TaskCard
+                  key={task._id}
+                  task={task}
+                  onClick={onTaskClick}
+                />
+              ))
             )}
           </SortableContext>
         </CardContent>
@@ -99,7 +129,7 @@ export const BoardColumn = ({ column, tasks, isOverlay }: BoardColumnProps) => {
 export const BoardContainer = ({ children }: { children: React.ReactNode }) => {
   const dndContext = useDndContext();
 
-  const variations = cva("px-2 md:px-0 flex lg:justify-center pb-4", {
+  const variations = cva("px-2 md:px-0 flex pb-4 w-full", {
     variants: {
       dragging: {
         default: "snap-x snap-mandatory",
@@ -109,11 +139,13 @@ export const BoardContainer = ({ children }: { children: React.ReactNode }) => {
   });
 
   return (
-    <ScrollArea className={variations({ dragging: dndContext.active ? "active" : "default" })}>
-      <div className="w-full flex gap-4 items-start flex-row justify-center">
-        {children}
-      </div>
-      <ScrollBar orientation="horizontal" />
-    </ScrollArea>
+    <div className="w-full overflow-x-auto">
+      <ScrollArea className={variations({ dragging: dndContext.active ? "active" : "default" })}>
+        <div className="flex gap-4 items-start">
+          {children}
+        </div>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
+    </div>
   );
-}
+};

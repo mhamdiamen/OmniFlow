@@ -2,17 +2,21 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Badge } from "@/components/ui/badge";
-import { Calendar } from "lucide-react";
+import { Calendar, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Task } from "@/types/types";
+import { useQuery } from "convex/react";
+import { api } from "../../../../../../convex/_generated/api";
 
 interface TaskCardProps {
     task: Task;
     isOverlay?: boolean;
+    onClick?: (taskId: string) => void; // Add onClick prop
+
 }
 
-export const TaskCard = ({ task, isOverlay }: TaskCardProps) => {
+export const TaskCard = ({ task, isOverlay, onClick }: TaskCardProps) => {
     const {
         setNodeRef,
         attributes,
@@ -27,12 +31,30 @@ export const TaskCard = ({ task, isOverlay }: TaskCardProps) => {
             task,
         },
     });
+    // Fetch comments count for this task
+    const comments = useQuery(api.queries.comments.getCommentsByTarget, {
+        targetId: task._id,
+        targetType: "task",
+    });
+
+    // Calculate total comments (parent comments + all replies)
+    const totalComments = comments?.reduce((total, comment) => {
+        return total + 1 + (comment.replyCount || 0); // 1 for parent comment + replyCount
+    }, 0) || 0;
 
     const style = {
         transition,
         transform: CSS.Translate.toString(transform),
     };
 
+    // TaskCard.tsx
+    const handleClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        // Only trigger if not currently dragging
+        if (!isDragging && onClick) {
+            onClick(task._id);
+        }
+    };
     const renderTaskStatusBadge = (status: string) => {
         const statusColors: Record<string, string> = {
             todo: 'bg-gray-500',
@@ -89,6 +111,8 @@ export const TaskCard = ({ task, isOverlay }: TaskCardProps) => {
             {...listeners}
             className={`border rounded-lg p-4 hover:bg-accent/50 transition-colors ${isOverlay ? "ring-2 ring-primary" : ""
                 } ${isDragging ? "opacity-50" : "opacity-100"}`}
+            onClick={handleClick} // Add onClick handler
+
         >
             <div className="flex justify-between items-start mb-2">
                 <h4 className="font-bold text-lg">{task.name}</h4>
@@ -115,8 +139,8 @@ export const TaskCard = ({ task, isOverlay }: TaskCardProps) => {
                         <Calendar className="h-4 w-4 text-muted-foreground" />
                         <span
                             className={`text-xs ${task.dueDate < Date.now() && task.status !== 'completed'
-                                    ? 'text-red-500 font-medium'
-                                    : 'text-muted-foreground'
+                                ? 'text-red-500 font-medium'
+                                : 'text-muted-foreground'
                                 }`}
                         >
                             {format(new Date(task.dueDate), 'MMM d, yyyy')}
@@ -125,27 +149,11 @@ export const TaskCard = ({ task, isOverlay }: TaskCardProps) => {
                     </div>
                 )}
                 <div className="flex items-center gap-2">
-                    {task.assignee ? (
-                        <div className="flex items-center gap-2">
-                            <Avatar className="h-6 w-6 border">
-                                {task.assignee.image && (
-                                    <AvatarImage
-                                        src={task.assignee.image}
-                                        alt={task.assignee.name || task.assignee.email || "Assignee"}
-                                    />
-                                )}
-                                <AvatarFallback>
-                                    {task.assignee.name?.[0]?.toUpperCase() ||
-                                        task.assignee.email?.[0]?.toUpperCase() ||
-                                        '?'}
-                                </AvatarFallback>
-                            </Avatar>
-                            <span className="text-sm">
-                                {task.assignee.name || task.assignee.email || "Assignee"}
-                            </span>
+                    {totalComments > 0 && (
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                            <MessageSquare className="h-4 w-4" />
+                            <span className="text-xs">{totalComments}</span>
                         </div>
-                    ) : (
-                        <span className="text-sm text-muted-foreground">Unassigned</span>
                     )}
                 </div>
             </div>
