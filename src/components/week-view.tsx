@@ -34,7 +34,7 @@ interface WeekViewProps {
   currentDate: Date
   events: CalendarEvent[]
   onEventSelect: (event: CalendarEvent) => void
-  onEventCreate: (startTime: Date) => void
+  /* onEventCreate: (startTime: Date) => void */
 }
 
 interface PositionedEvent {
@@ -50,7 +50,7 @@ export function WeekView({
   currentDate,
   events,
   onEventSelect,
-  onEventCreate,
+  /* onEventCreate, */
 }: WeekViewProps) {
   const days = useMemo(() => {
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 })
@@ -390,7 +390,7 @@ export function WeekView({
                           const startTime = new Date(day)
                           startTime.setHours(hourValue)
                           startTime.setMinutes(quarter * 15)
-                          onEventCreate(startTime)
+                         /*  onEventCreate(startTime) */
                         }}
                       />
                     )

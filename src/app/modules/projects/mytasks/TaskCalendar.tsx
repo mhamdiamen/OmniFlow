@@ -45,7 +45,7 @@ export default function TaskCalendar() {
             description: task.description || "",
             start: startDate,
             end: endDate,
-            allDay: false,
+            allDay: true,
             color,
             status: task.status,
             priority: task.priority,
@@ -98,20 +98,10 @@ export default function TaskCalendar() {
 
   return (
     <div>
-      <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded">
-        <h3 className="font-medium text-yellow-800">Debug Information</h3>
-        <p className="text-sm text-yellow-700">
-          User: {currentUser?._id || "Not loaded"} |
-          Tasks: {tasks?.length || 0} |
-          Events: {events.length}
-        </p>
-      </div>
+    
 
       <EventCalendar
         events={events}
-        onEventAdd={handleEventAdd}
-        onEventUpdate={handleEventUpdate}
-        onEventDelete={handleEventDelete}
         onEventSelect={handleTaskSelect} // Pass the select handler
 
       />

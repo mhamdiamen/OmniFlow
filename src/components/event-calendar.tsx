@@ -40,9 +40,10 @@ import { EventDialog } from "./event-dialog"
 
 export interface EventCalendarProps {
   events?: CalendarEvent[]
-  onEventAdd?: (event: CalendarEvent) => void
-  onEventUpdate?: (event: CalendarEvent) => void
-  onEventDelete?: (eventId: string) => void
+  /*   onEventAdd?: (event: CalendarEvent) => void
+    onEventUpdate?: (event: CalendarEvent) => void
+    onEventDelete?: (eventId: string) => void
+   */
   onEventSelect?: (event: CalendarEvent) => void // Add this line
 
   className?: string
@@ -51,9 +52,10 @@ export interface EventCalendarProps {
 
 export function EventCalendar({
   events = [],
-  onEventAdd,
-  onEventUpdate,
-  onEventDelete,
+  /*   onEventAdd,
+    onEventUpdate,
+    onEventDelete,
+   */
   onEventSelect, // Add this line to destructure the prop
   className,
   initialView = "month",
@@ -140,7 +142,7 @@ export function EventCalendar({
     }
   }
 
-
+/* 
   const handleEventCreate = (startTime: Date) => {
     console.log("Creating new event at:", startTime) // Debug log
 
@@ -206,7 +208,7 @@ export function EventCalendar({
         position: "bottom-left",
       })
     }
-  }
+  } 
 
   const handleEventUpdate = (updatedEvent: CalendarEvent) => {
     onEventUpdate?.(updatedEvent)
@@ -217,46 +219,43 @@ export function EventCalendar({
       position: "bottom-left",
     })
   }
+*/
+const getResponsiveDateFormat = () => {
+  const width = window.innerWidth
+  if (width < 480) {
+    return format(currentDate, "MMM d, yyyy")
+  } else if (width < 768) {
+    return format(currentDate, "MMMM d, yyyy")
+  } else {
+    return format(currentDate, "EEE MMMM d, yyyy")
+  }
+}
 
-  const viewTitle = useMemo(() => {
-    if (view === "month") {
-      return format(currentDate, "MMMM yyyy")
-    } else if (view === "week") {
-      const start = startOfWeek(currentDate, { weekStartsOn: 0 })
-      const end = endOfWeek(currentDate, { weekStartsOn: 0 })
-      if (isSameMonth(start, end)) {
-        return format(start, "MMMM yyyy")
-      } else {
-        return `${format(start, "MMM")} - ${format(end, "MMM yyyy")}`
-      }
-    } else if (view === "day") {
-      return (
-        <>
-          <span className="min-[480px]:hidden" aria-hidden="true">
-            {format(currentDate, "MMM d, yyyy")}
-          </span>
-          <span className="max-[479px]:hidden min-md:hidden" aria-hidden="true">
-            {format(currentDate, "MMMM d, yyyy")}
-          </span>
-          <span className="max-md:hidden">
-            {format(currentDate, "EEE MMMM d, yyyy")}
-          </span>
-        </>
-      )
-    } else if (view === "agenda") {
-      // Show the month range for agenda view
-      const start = currentDate
-      const end = addDays(currentDate, AgendaDaysToShow - 1)
-
-      if (isSameMonth(start, end)) {
-        return format(start, "MMMM yyyy")
-      } else {
-        return `${format(start, "MMM")} - ${format(end, "MMM yyyy")}`
-      }
+const viewTitle = useMemo(() => {
+  if (view === "month") {
+    return format(currentDate, "MMMM yyyy")
+  } else if (view === "week") {
+    const start = startOfWeek(currentDate, { weekStartsOn: 0 })
+    const end = endOfWeek(currentDate, { weekStartsOn: 0 })
+    if (isSameMonth(start, end)) {
+      return format(start, "MMMM yyyy")
     } else {
-      return format(currentDate, "MMMM yyyy")
+      return `${format(start, "MMM")} - ${format(end, "MMM yyyy")}`
     }
-  }, [currentDate, view])
+  } else if (view === "day") {
+    return getResponsiveDateFormat()
+  } else if (view === "agenda") {
+    const start = currentDate
+    const end = addDays(currentDate, AgendaDaysToShow - 1)
+    if (isSameMonth(start, end)) {
+      return format(start, "MMMM yyyy")
+    } else {
+      return `${format(start, "MMM")} - ${format(end, "MMM yyyy")}`
+    }
+  } else {
+    return format(currentDate, "MMMM yyyy")
+  }
+}, [currentDate, view])
 
   return (
     <div
@@ -344,7 +343,7 @@ export function EventCalendar({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-         {/*  <Button
+          {/*  <Button
             className="aspect-square max-[479px]:p-0!"
             onClick={() => {
               setSelectedEvent(null) // Ensure we're creating a new event
@@ -367,7 +366,7 @@ export function EventCalendar({
             currentDate={currentDate}
             events={events}
             onEventSelect={handleEventSelect}
-            onEventCreate={handleEventCreate}
+           /*  onEventCreate={handleEventCreate} */
           />
         )}
         {view === "week" && (
@@ -375,7 +374,7 @@ export function EventCalendar({
             currentDate={currentDate}
             events={events}
             onEventSelect={handleEventSelect}
-            onEventCreate={handleEventCreate}
+           /*  onEventCreate={handleEventCreate} */
           />
         )}
         {view === "day" && (
@@ -383,7 +382,7 @@ export function EventCalendar({
             currentDate={currentDate}
             events={events}
             onEventSelect={handleEventSelect}
-            onEventCreate={handleEventCreate}
+           /*  onEventCreate={handleEventCreate} */
           />
         )}
         {view === "agenda" && (
@@ -395,7 +394,7 @@ export function EventCalendar({
         )}
       </div>
 
-      <EventDialog
+     {/*  <EventDialog
         event={selectedEvent}
         isOpen={isEventDialogOpen}
         onClose={() => {
@@ -404,7 +403,7 @@ export function EventCalendar({
         }}
         onSave={handleEventSave}
         onDelete={handleEventDelete}
-      />
+      /> */}
     </div>
   )
 }

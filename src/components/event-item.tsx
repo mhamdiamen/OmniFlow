@@ -245,7 +245,7 @@ export function EventItem({
         )}
         {event.location && (
           <>
-            <span className="px-1 opacity-35"> · </span>
+            <span className="px-1"> Project : </span>
             <span>{event.location}</span>
           </>
         )}
