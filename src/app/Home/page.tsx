@@ -64,48 +64,48 @@ export default function Home() {
             <p>Overview of your activities and trends.</p>
           </>
         )}
-        
-      {isLoading ? (
-        <Button variant="outline" disabled>
-          <Loader2 className="animate-spin mr-2 h-4 w-4" />
-        </Button>
-      ) : userCompany ? (
-        <Button variant="outline" onClick={() => setShowSettingsDialog(true)}>
-          Settings
-        </Button>
-      ) : (
-        <Button variant="outline" onClick={() => setShowDialog(true)}>
-          Create Company
-        </Button>
-      )}
 
-      <CompanyCreationDialog
-        open={showDialog}
-        onClose={() => setShowDialog(false)}
-        companyName={companyName}
-        setCompanyName={setCompanyName}
-        handleCreateCompany={handleCreateCompany}
-      />
+        {isLoading ? (
+          <Button variant="outline" disabled>
+            <Loader2 className="animate-spin mr-2 h-4 w-4" />
+          </Button>
+        ) : userCompany ? (
+          <Button variant="outline" onClick={() => setShowSettingsDialog(true)}>
+            Settings
+          </Button>
+        ) : (
+          <Button variant="outline" onClick={() => setShowDialog(true)}>
+            Create Company
+          </Button>
+        )}
 
-      <CompanySettingsDialog
-        open={showSettingsDialog}
-        onClose={() => setShowSettingsDialog(false)}
-        company={
-          userCompany
-            ? {
-              id: userCompany._id,
-              name: userCompany.name,
-              createdAt: userCompany.createdAt,
-              modules: userCompany.modules,
-              settings: userCompany.settings ?? {},
-            }
-            : null
-        }
-      />
-      {/* Render the reusable tabs component */}
-      <div className="mt-8 w-full">
-        <ReusableTabs  />
-      </div>
+        <CompanyCreationDialog
+          open={showDialog}
+          onClose={() => setShowDialog(false)}
+          companyName={companyName}
+          setCompanyName={setCompanyName}
+          handleCreateCompany={handleCreateCompany}
+        />
+
+        <CompanySettingsDialog
+          open={showSettingsDialog}
+          onClose={() => setShowSettingsDialog(false)}
+          company={
+            userCompany
+              ? {
+                id: userCompany._id,
+                name: userCompany.name,
+                createdAt: userCompany.createdAt,
+                modules: userCompany.modules,
+                settings: userCompany.settings ?? {},
+              }
+              : null
+          }
+        />
+        {/* Render the reusable tabs component */}
+        <div className="mt-8 w-full">
+          <ReusableTabs />
+        </div>
 
       </ContentLayout>
 
