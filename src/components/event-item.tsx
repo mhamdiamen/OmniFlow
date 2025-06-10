@@ -49,9 +49,9 @@ function EventWrapper({
   // Always use the currentTime (if provided) to determine if the event is in the past
   const displayEnd = currentTime
     ? new Date(
-        new Date(currentTime).getTime() +
-          (new Date(event.end).getTime() - new Date(event.start).getTime())
-      )
+      new Date(currentTime).getTime() +
+      (new Date(event.end).getTime() - new Date(event.start).getTime())
+    )
     : new Date(event.end)
 
   const isEventInPast = isPast(displayEnd)
@@ -60,7 +60,7 @@ function EventWrapper({
     <button
       className={cn(
         "focus-visible:border-ring focus-visible:ring-ring/50 flex size-full overflow-hidden px-1 text-left font-medium backdrop-blur-md transition outline-none select-none focus-visible:ring-[3px] data-dragging:cursor-grabbing data-dragging:shadow-lg data-past-event:line-through sm:px-2",
-        getEventColorClasses(event.color),
+        getEventColorClasses(event.color) + " !important",
         getBorderRadiusClasses(isFirstDay, isLastDay),
         className
       )}
@@ -111,7 +111,7 @@ export function EventItem({
   onTouchStart,
 }: EventItemProps) {
   const eventColor = event.color
-
+  console.log('Rendering event:', event.title, 'with color:', event.color)
   // Use the provided currentTime (for dragging) or the event's actual time
   const displayStart = useMemo(() => {
     return currentTime || new Date(event.start)
@@ -120,9 +120,9 @@ export function EventItem({
   const displayEnd = useMemo(() => {
     return currentTime
       ? new Date(
-          new Date(currentTime).getTime() +
-            (new Date(event.end).getTime() - new Date(event.start).getTime())
-        )
+        new Date(currentTime).getTime() +
+        (new Date(event.end).getTime() - new Date(event.start).getTime())
+      )
       : new Date(event.end)
   }, [currentTime, event.start, event.end])
 
@@ -223,7 +223,7 @@ export function EventItem({
     <button
       className={cn(
         "focus-visible:border-ring focus-visible:ring-ring/50 flex w-full flex-col gap-1 rounded p-2 text-left transition outline-none focus-visible:ring-[3px] data-past-event:line-through data-past-event:opacity-90",
-        getEventColorClasses(eventColor),
+        getEventColorClasses(event.color) + " !important",
         className
       )}
       data-past-event={isPast(new Date(event.end)) || undefined}

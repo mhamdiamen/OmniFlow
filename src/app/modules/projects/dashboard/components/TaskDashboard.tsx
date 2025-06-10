@@ -1,9 +1,10 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import React, { useState } from "react";
 import TaskCheckBox from "./TaskCheckBox";
 import TaskCard from "./TaskCard";
+import { CalendarDisplay } from "./calendar/CalendarDisplay";
 
 const overdueTasks = [
     { title: "Make a text campaign", date: "9 Aug" },
@@ -94,7 +95,8 @@ export default function TaskDashboard() {
                     <CardHeader className="flex flex-row justify-between items-center p-0">
                         <CardTitle className="text-lg">Tasks</CardTitle>
                         {/*                         <Button variant="outline" size="sm">+ Add task</Button>
- */}                    </CardHeader>
+ */}
+                    </CardHeader>
 
                     <CardContent className="space-y-6 p-0 overflow-y-auto">
                         {/* Upcoming Section */}
@@ -171,24 +173,76 @@ export default function TaskDashboard() {
 
 
                 {/* Right Top: Recent Activities */}
-                <Card className="col-span-2 p-4">
+                <Card className="col-span-2 p-0">
                     <CardHeader>
-                        <CardTitle>Recent Activities</CardTitle>
+                        <CardTitle className="text-lg">Your Calendar</CardTitle>
+                        <CardDescription className="text-sm text-muted-foreground">
+                            Displays all dates on which you have assigned tasks.
+                        </CardDescription>
                     </CardHeader>
+
                     <CardContent>
-                     
+                        <div className="p-0 flex flex-col md:flex-row gap-6 items-center">
+
+                            {/* Left: Headline, Description, Button */}
+                            <div className="flex-1 flex flex-col justify-center space-y-2">
+                                <h2 className="text-xl font-semibold">Maximize Your Productivity</h2>
+                                <p className="text-sm text-muted-foreground">
+                                    Stay on top of your schedule with a clear view of upcoming tasks and deadlines. Effortlessly manage your time and ensure nothing falls through the cracks.
+                                </p>
+                                <Button>View Scheduled Tasks</Button>
+                            </div>
+
+                            {/* Right: Calendar */}
+                            <div className="flex-1 flex items-center justify-center">
+                                <CalendarDisplay />
+                            </div>
+
+                        </div>
                     </CardContent>
+
+
+                    <CardFooter className="text-xs text-muted-foreground justify-center text-center">
+                        Dates marked with{'  '}
+                        <span className="text-green-600 font-semibold">“O”</span>{' '}
+                        indicate days containing one or more scheduled tasks.
+                    </CardFooter>
+
+
+
                 </Card>
 
+
+
+
+
                 {/* Right Bottom: Recent Requests */}
-                <Card className="col-span-2 p-4">
+                {/* Right Bottom: Recent Requests */}
+                <Card className="col-span-1 p-0">
                     <CardHeader>
-                        <CardTitle>Recent Requests</CardTitle>
+                        <CardTitle className="text-lg">Latest Comment Activities</CardTitle>
+                        <CardDescription className="text-sm text-muted-foreground">
+                            See who commented, liked, or interacted with your posts in real-time.
+                        </CardDescription>
+
                     </CardHeader>
                     <CardContent>
                         {/* Your content */}
                     </CardContent>
                 </Card>
+
+                <Card className="col-span-1 p-0">
+                    <CardHeader>
+                        <CardTitle className="text-lg">Your Calendar</CardTitle>
+                        <CardDescription className="text-sm text-muted-foreground">
+                            Displays all dates on which you have assigned tasks.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {/* Your content */}
+                    </CardContent>
+                </Card>
+
             </div>
 
         </div>

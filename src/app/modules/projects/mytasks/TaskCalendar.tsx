@@ -12,9 +12,18 @@ import { ViewTaskSheet } from "../tasks/components/ViewTaskSheet"
 
 // Define a type guard for EventColor
 const isEventColor = (color: string): color is EventColor => {
-  return ['rose', 'red', 'amber', 'emerald', 'sky', 'orange', 'violet'].includes(color)
+  return ['rose', 'amber', 'emerald', 'sky', 'orange', 'violet'].includes(color)
 }
 
+const getColorForPriority = (priority: string): string => {
+  switch (priority) {
+    case "urgent": return "rose"
+    case "high": return "orange"
+    case "medium": return "amber"
+    case "low": return "emerald"
+    default: return "sky"
+  }
+}
 export default function TaskCalendar() {
   const currentUser = useQuery(api.users.CurrentUser)
   const [events, setEvents] = useState<CalendarEvent[]>([])
@@ -34,7 +43,11 @@ export default function TaskCalendar() {
         .filter(task => task.dueDate)
         .map(task => {
           const priorityColor = getColorForPriority(task.priority)
+          console.log("Priority:", task.priority, "Color:", priorityColor); // Add this line
+
           const color: EventColor = isEventColor(priorityColor) ? priorityColor : 'sky'
+          console.log("Final Color:", color); // Add this line
+
 
           const startDate = new Date(task.dueDate!)
           const endDate = addHours(startDate, 1)
@@ -65,15 +78,7 @@ export default function TaskCalendar() {
     setIsSheetOpen(true)
   }
 
-  const getColorForPriority = (priority: string): string => {
-    switch (priority) {
-      case "urgent": return "rose"
-      case "high": return "red"
-      case "medium": return "amber"
-      case "low": return "emerald"
-      default: return "sky"
-    }
-  }
+
 
   const handleEventAdd = (event: CalendarEvent) => {
     setEvents([...events, event])
@@ -98,7 +103,7 @@ export default function TaskCalendar() {
 
   return (
     <div>
-    
+
 
       <EventCalendar
         events={events}

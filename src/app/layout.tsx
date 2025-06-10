@@ -48,6 +48,7 @@ export default function RootLayout({
               <Toaster position="bottom-right" />
             </ThemeProvider>
           </body>
+          
         </html>
       </EdgeStoreProvider>
 

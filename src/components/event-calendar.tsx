@@ -258,6 +258,7 @@ const viewTitle = useMemo(() => {
 }, [currentDate, view])
 
   return (
+    
     <div
       className="flex flex-col rounded-lg border has-data-[slot=month-view]:flex-1"
       style={
