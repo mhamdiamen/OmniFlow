@@ -394,8 +394,14 @@ export function TasksTable({ tasks, projectId }: TasksTableProps) {
             cell: ({ row }) => {
                 const date = row.original.dueDate;
 
-                // Calculate if task is overdue
-                const isOverdue = date && date < Date.now() && row.original.status !== "completed";
+                // Get start of today (midnight) for accurate overdue comparison
+                const startOfToday = new Date();
+                startOfToday.setHours(0, 0, 0, 0);
+
+                // Calculate if task is overdue (only dates before today, not including today)
+                const isOverdue = date &&
+                    date < startOfToday.getTime() &&
+                    row.original.status !== "completed";
 
                 return (
                     <div className="flex items-center gap-2">

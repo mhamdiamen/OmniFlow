@@ -218,35 +218,54 @@ const schema = defineSchema({
     .index("healthStatus", ["healthStatus"])
     .index("status", ["status"]),
 
-  tasks: defineTable({
-    projectId: v.id("projects"),
-    name: v.string(),
-    description: v.optional(v.string()),
-    assigneeId: v.optional(v.id("users")),
-    status: v.union(
-      v.literal("todo"),
-      v.literal("in_progress"),
-      v.literal("completed"),
-      v.literal("on_hold"),
-      v.literal("canceled")
-    ),
-    priority: v.union(
-      v.literal("low"),
-      v.literal("medium"),
-      v.literal("high"),
-      v.literal("urgent")
-    ),
-    dueDate: v.optional(v.float64()),
-    createdBy: v.id("users"),
-    completedAt: v.optional(v.float64()),
-    completedBy: v.optional(v.id("users")),
+    tasks: defineTable({
+      projectId: v.id("projects"),
+      name: v.string(),
+      description: v.optional(v.string()),
+      assigneeId: v.optional(v.id("users")),
     
-  })
-    .index("projectId", ["projectId"])
-    .index("assigneeId", ["assigneeId"])
-    .index("status", ["status"])
-    .index("dueDate", ["dueDate"]),
-
+      status: v.union(
+        v.literal("todo"),
+        v.literal("in_progress"),
+        v.literal("completed"),
+        v.literal("on_hold"),
+        v.literal("canceled")
+      ),
+    
+      priority: v.union(
+        v.literal("low"),
+        v.literal("medium"),
+        v.literal("high"),
+        v.literal("urgent")
+      ),
+    
+      dueDate: v.optional(v.float64()),
+    
+      createdBy: v.id("users"),
+      completedAt: v.optional(v.float64()),
+      completedBy: v.optional(v.id("users")),
+    
+      // ✅ NEW: Subtasks array (embedded)
+      subtasks: v.optional(
+        v.array(
+          v.object({
+            id: v.string(), // nanoid/uuid — unique per subtask
+            label: v.string(), // subtask description/title
+            completed: v.boolean(), // whether this subtask is done
+            createdAt: v.optional(v.float64()), // optional metadata
+            completedAt: v.optional(v.float64()),
+          })
+        )
+      ),
+    
+      // ✅ Optional future-use field
+      progress: v.optional(v.number()), // 0–100 derived from subtasks
+    })
+      .index("projectId", ["projectId"])
+      .index("assigneeId", ["assigneeId"])
+      .index("status", ["status"])
+      .index("dueDate", ["dueDate"]),
+      
   // Inside your schema.ts file
   comments: defineTable({
     // Who posted the comment

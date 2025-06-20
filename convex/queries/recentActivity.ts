@@ -85,3 +85,37 @@ export const getActivitiesByTargetType = query({
             .collect();
     },
 });
+export const getActivitiesForUserTasks = query({
+    args: {
+        taskIds: v.array(v.string()),
+    },
+    handler: async (ctx, args) => {
+        const authUserId = await getAuthUserId(ctx);
+        if (!authUserId) throw new Error("User not authenticated");
+
+        const activities = await ctx.db.query("recentActivity").collect();
+
+        // Filter activities that match any of the user's tasks
+        const filteredActivities = activities.filter((activity) => {
+            if (
+                activity.targetType === "task" &&
+                activity.targetId !== undefined && args.taskIds.includes(activity.targetId)
+            ) {
+                return true;
+            }
+            if (
+                activity.targetType === "comment" &&
+                activity.metadata?.targetId && // ✅ ensure it's defined
+                args.taskIds.includes(activity.metadata.targetId)
+            ) {
+                return true;
+            }
+            return false;
+        });
+
+
+        // Sort by creation time descending
+        return filteredActivities.sort((a, b) => b._creationTime - a._creationTime);
+    },
+});
+

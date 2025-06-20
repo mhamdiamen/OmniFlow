@@ -31,9 +31,15 @@ import {
 export function CommentActionsDropdown({
   commentId,
   authorId,
+  targetId,
+  targetType,
+
 }: {
   commentId: Id<"comments">;
   authorId: Id<"users">;
+  targetId: string;
+  targetType: string;
+
 }) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const deleteComment = useMutation(api.mutations.comments.deleteComment);
@@ -42,7 +48,11 @@ export function CommentActionsDropdown({
 
   const handleDelete = async () => {
     try {
-      await deleteComment({ commentId });
+      await deleteComment({
+        commentId,
+        targetId,
+        targetType,
+      });
       toast.success("Comment deleted successfully");
     } catch (error) {
       console.error("Failed to delete comment:", error);
@@ -51,6 +61,7 @@ export function CommentActionsDropdown({
       setIsDeleteDialogOpen(false);
     }
   };
+
 
   const isAuthor = currentUser?._id === authorId;
 
@@ -74,7 +85,7 @@ export function CommentActionsDropdown({
               <Share2 size={16} className="mr-2 opacity-60" />
               <span>Share</span>
             </DropdownMenuItem>
-            
+
             {!isAuthor && (
               <DropdownMenuItem className="cursor-pointer">
                 <Flag size={16} className="mr-2 opacity-60" />

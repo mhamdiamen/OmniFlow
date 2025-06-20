@@ -4,7 +4,7 @@ import { Id } from "../_generated/dataModel";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { createActivityForUser } from "./recentActivity";
 
-// Create a new task
+// Create a new task with subtasks
 export const createTask = mutation({
   args: {
     projectId: v.id("projects"),
@@ -25,9 +25,20 @@ export const createTask = mutation({
       v.literal("urgent")
     ),
     dueDate: v.optional(v.float64()),
+    subtasks: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          label: v.string(),
+          completed: v.boolean(),
+          createdAt: v.optional(v.float64()),
+          completedAt: v.optional(v.float64()),
+        })
+      )
+    ),
   },
   handler: async (ctx, args) => {
-    const { projectId, name, description, assigneeId, status, priority, dueDate } = args;
+    const { projectId, name, description, assigneeId, status, priority, dueDate, subtasks } = args;
 
     // Get authenticated user
     const userId = await getAuthUserId(ctx);
@@ -47,6 +58,15 @@ export const createTask = mutation({
       throw new Error("Project not found");
     }
 
+    // Validate subtasks - must have at least one
+    if (!subtasks || subtasks.length === 0) {
+      throw new Error("Tasks must have at least one subtask");
+    }
+
+    // Calculate initial progress based on subtasks
+    const completedSubtasks = subtasks.filter(st => st.completed).length;
+    const progress = Math.round((completedSubtasks / subtasks.length) * 100);
+
     // Create the task
     const taskId = await ctx.db.insert("tasks", {
       projectId,
@@ -56,6 +76,12 @@ export const createTask = mutation({
       status,
       priority,
       dueDate,
+      subtasks: subtasks.map(st => ({
+        ...st,
+        createdAt: st.createdAt || Date.now(),
+        completedAt: st.completed ? (st.completedAt || Date.now()) : undefined
+      })),
+      progress,
       createdBy: user._id,
       ...(status === "completed" ? {
         completedAt: Date.now(),
@@ -88,15 +114,35 @@ export const createTask = mutation({
       actionType: "Created Task",
       targetId: taskId,
       targetType: "task",
-      description: `Task "${name}" created in project "${project.name}"`,
+      description: `Task "${name}" created in project "${project.name}" with ${subtasks.length} subtasks`,
       metadata: {
         taskId,
         projectId,
         status,
         priority,
-        createdBy: user._id
+        createdBy: user._id,
+        subtasksCount: subtasks.length,
+        initialProgress: progress
       }
     });
+
+    // Log creation of each subtask
+    for (const subtask of subtasks) {
+      await createActivityForUser(ctx, {
+        userId: user._id,
+        actionType: "Created Subtask",
+        targetId: taskId,
+        targetType: "task",
+        description: `Subtask "${subtask.label}" created in task "${name}"`,
+        metadata: {
+          taskId,
+          projectId,
+          subtaskId: subtask.id,
+          subtaskLabel: subtask.label,
+          completed: subtask.completed
+        }
+      });
+    }
 
     // Log activity for the assignee (if provided)
     if (assigneeId) {
@@ -111,7 +157,8 @@ export const createTask = mutation({
           taskId,
           projectId,
           taskName: name,
-          projectName: project.name
+          projectName: project.name,
+          subtasksCount: subtasks.length
         }
       });
     }
@@ -120,7 +167,7 @@ export const createTask = mutation({
   },
 });
 
-// Update an existing task
+// Update an existing task with subtasks
 export const updateTask = mutation({
   args: {
     taskId: v.id("tasks"),
@@ -141,9 +188,21 @@ export const updateTask = mutation({
       v.literal("urgent")
     )),
     dueDate: v.optional(v.float64()),
+    subtasks: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          label: v.string(),
+          completed: v.boolean(),
+          createdAt: v.optional(v.float64()),
+          completedAt: v.optional(v.float64()),
+        })
+      )
+    ),
+    updatedSubtaskId: v.optional(v.string()), // For assignee updates
   },
   handler: async (ctx, args) => {
-    const { taskId, ...updates } = args;
+    const { taskId, subtasks, updatedSubtaskId, ...updates } = args;
 
     // Get current user
     const userId = await getAuthUserId(ctx);
@@ -173,20 +232,121 @@ export const updateTask = mutation({
     const oldStatus = task.status;
     const oldPriority = task.priority;
     const oldAssigneeId = task.assigneeId;
+    const oldSubtasks = task.subtasks || [];
 
     // Determine if status/priority/due date changed
     const isStatusChanged = updates.status && updates.status !== oldStatus;
     const isPriorityChanged = updates.priority && updates.priority !== oldPriority;
     const isDueDateChanged = updates.dueDate && updates.dueDate !== task.dueDate;
     const isAssigneeChanged = updates.assigneeId && updates.assigneeId !== oldAssigneeId;
+    const isSubtasksChanged = subtasks !== undefined;
 
+    // Handle subtask updates
+    let newSubtasks = oldSubtasks;
+    let subtaskDeltas = {
+      added: [] as any[],
+      removed: [] as any[],
+      updated: [] as any[],
+    };
+
+    if (isSubtasksChanged) {
+      // Full subtasks replacement (manager use case)
+      if (subtasks) {
+        // Validate at least one subtask
+        if (subtasks.length === 0) {
+          throw new Error("Tasks must have at least one subtask");
+        }
+
+        // Find differences
+        const oldSubtaskIds = new Set(oldSubtasks.map(st => st.id));
+        const newSubtaskIds = new Set(subtasks.map(st => st.id));
+
+        subtaskDeltas.added = subtasks.filter(st => !oldSubtaskIds.has(st.id));
+        subtaskDeltas.removed = oldSubtasks.filter(st => !newSubtaskIds.has(st.id));
+        subtaskDeltas.updated = subtasks.filter(newSt => {
+          const oldSt = oldSubtasks.find(st => st.id === newSt.id);
+          return oldSt && (oldSt.completed !== newSt.completed || oldSt.label !== newSt.label);
+        });
+
+        newSubtasks = subtasks.map(st => ({
+          ...st,
+          createdAt: st.createdAt || oldSubtasks.find(ost => ost.id === st.id)?.createdAt || Date.now(),
+          completedAt: st.completed
+            ? (st.completedAt || oldSubtasks.find(ost => ost.id === st.id)?.completedAt || Date.now())
+            : undefined
+        }));
+      }
+    } else if (updatedSubtaskId) {
+      // Single subtask update (assignee use case)
+      const subtaskToUpdate = oldSubtasks.find(st => st.id === updatedSubtaskId);
+      if (!subtaskToUpdate) {
+        throw new Error("Subtask not found");
+      }
+
+      // Only allow toggling completion status for assignee
+      newSubtasks = oldSubtasks.map(st => {
+        if (st.id === updatedSubtaskId) {
+          return {
+            ...st,
+            completed: !st.completed,
+            completedAt: !st.completed ? Date.now() : undefined
+          };
+        }
+        return st;
+      });
+
+      subtaskDeltas.updated = [{
+        id: updatedSubtaskId,
+        oldCompleted: subtaskToUpdate.completed,
+        newCompleted: !subtaskToUpdate.completed
+      }];
+    }
+
+    // Calculate new progress based on subtasks
+    const completedSubtasks = newSubtasks.filter(st => st.completed).length;
+    const progress = newSubtasks.length > 0
+      ? Math.round((completedSubtasks / newSubtasks.length) * 100)
+      : 0;
     // Prepare update object
-    const updateObj: any = { ...updates };
+    const updateObj: any = {
+      ...updates,
+      ...(isSubtasksChanged || updatedSubtaskId ? { subtasks: newSubtasks, progress } : {})
+    };
 
-    // Handle task completion logic
-    const isCompletingTask = updates.status === "completed" && task.status !== "completed";
-    const isUncompletingTask = task.status === "completed" && updates.status && updates.status !== "completed";
+    // Automatically update task status based on subtask completion
+    if (isSubtasksChanged || updatedSubtaskId) {
+      if (completedSubtasks === newSubtasks.length && newSubtasks.length > 0) {
+        updateObj.status = "completed";
+        updateObj.completedAt = Date.now();
+        updateObj.completedBy = user._id;
+      } else if (task.status === "completed") {
+        updateObj.status = "in_progress";
+        updateObj.completedAt = undefined;
+        updateObj.completedBy = undefined;
+      }
+    }
 
+
+    // Detect if the task was completed or uncompleted during this update
+    let isCompletingTask = false;
+    let isUncompletingTask = false;
+
+    // First, check if the task status changed via direct update
+    if (updates.status !== undefined) {
+      isCompletingTask = updates.status === "completed" && task.status !== "completed";
+      isUncompletingTask = task.status === "completed" && updates.status !== "completed";
+    }
+
+    // Then, check if the task was auto-completed due to subtasks
+    if (!isCompletingTask && !isUncompletingTask && updateObj.status !== undefined) {
+      const oldStatus = task.status;
+      const newStatus = updateObj.status;
+
+      isCompletingTask = newStatus === "completed" && oldStatus !== "completed";
+      isUncompletingTask = oldStatus === "completed" && newStatus !== "completed";
+    }
+
+    // Apply completion timestamps accordingly
     if (isCompletingTask) {
       updateObj.completedAt = Date.now();
       updateObj.completedBy = user._id;
@@ -215,9 +375,75 @@ export const updateTask = mutation({
         newPriority: isPriorityChanged ? updates.priority : oldPriority,
         oldAssigneeId,
         newAssigneeId: isAssigneeChanged ? updates.assigneeId : oldAssigneeId,
-        projectName: project.name
+        projectName: project.name,
+        ...(isSubtasksChanged || updatedSubtaskId ? {
+          newProgress: progress,
+          oldProgress: task.progress || 0
+        } : {})
       }
     });
+
+    // Log subtask changes
+    if (isSubtasksChanged || updatedSubtaskId) {
+      // Log added subtasks
+      for (const added of subtaskDeltas.added) {
+        await createActivityForUser(ctx, {
+          userId: user._id,
+          actionType: "Added Subtask",
+          targetId: taskId,
+          targetType: "task",
+          description: `Added subtask "${added.label}" to task "${task.name}"`,
+          metadata: {
+            taskId,
+            projectId: task.projectId,
+            subtaskId: added.id,
+            subtaskLabel: added.label,
+            completed: added.completed
+          }
+        });
+      }
+
+      // Log removed subtasks
+      for (const removed of subtaskDeltas.removed) {
+        await createActivityForUser(ctx, {
+          userId: user._id,
+          actionType: "Removed Subtask",
+          targetId: taskId,
+          targetType: "task",
+          description: `Removed subtask "${removed.label}" from task "${task.name}"`,
+          metadata: {
+            taskId,
+            projectId: task.projectId,
+            subtaskId: removed.id,
+            subtaskLabel: removed.label
+          }
+        });
+      }
+
+      // Log updated subtasks
+      for (const updated of subtaskDeltas.updated) {
+        const subtask = newSubtasks.find(st => st.id === updated.id);
+        if (!subtask) continue;
+
+        await createActivityForUser(ctx, {
+          userId: user._id,
+          actionType: "Updated Subtask",
+          targetId: taskId,
+          targetType: "task",
+          description: `Updated subtask "${subtask.label}" in task "${task.name}"`,
+          metadata: {
+            taskId,
+            projectId: task.projectId,
+            subtaskId: subtask.id,
+            subtaskLabel: subtask.label,
+            ...(updated.oldCompleted !== undefined ? {
+              oldCompleted: updated.oldCompleted,
+              newCompleted: subtask.completed
+            } : {})
+          }
+        });
+      }
+    }
 
     // Notify previous assignee if unassigned
     if (oldAssigneeId && isAssigneeChanged && updates.assigneeId !== oldAssigneeId) {
@@ -249,7 +475,8 @@ export const updateTask = mutation({
           taskId,
           projectId: task.projectId,
           taskName: task.name,
-          projectName: project.name
+          projectName: project.name,
+          subtasksCount: newSubtasks.length
         }
       });
     }
@@ -274,8 +501,7 @@ export const updateTask = mutation({
     return taskId;
   },
 });
-
-// Delete a task
+// Delete a task (updated to handle subtasks)
 export const deleteTask = mutation({
   args: {
     taskId: v.id("tasks"),
@@ -307,6 +533,26 @@ export const deleteTask = mutation({
       throw new Error("Project not found");
     }
 
+    // Log subtask deletion activities first
+    if (task.subtasks && task.subtasks.length > 0) {
+      for (const subtask of task.subtasks) {
+        await createActivityForUser(ctx, {
+          userId: user._id,
+          actionType: "Subtask Deleted",
+          targetId: taskId,
+          targetType: "task",
+          description: `Subtask "${subtask.label}" deleted from task "${task.name}"`,
+          metadata: {
+            taskId,
+            projectId: task.projectId,
+            subtaskId: subtask.id,
+            subtaskLabel: subtask.label,
+            deletedBy: user._id
+          }
+        });
+      }
+    }
+
     // Delete task
     await ctx.db.delete(taskId);
 
@@ -316,12 +562,13 @@ export const deleteTask = mutation({
       actionType: "Deleted Task",
       targetId: taskId,
       targetType: "task",
-      description: `Deleted task "${task.name}" from project "${project.name}"`,
+      description: `Deleted task "${task.name}" with ${task.subtasks?.length || 0} subtasks from project "${project.name}"`,
       metadata: {
         taskId,
         projectId: task.projectId,
         taskName: task.name,
-        projectName: project.name
+        projectName: project.name,
+        subtasksCount: task.subtasks?.length || 0
       }
     });
 
@@ -337,7 +584,8 @@ export const deleteTask = mutation({
           removedBy: user._id,
           taskId,
           projectId: task.projectId,
-          projectName: project.name
+          projectName: project.name,
+          subtasksCount: task.subtasks?.length || 0
         }
       });
     }
@@ -361,7 +609,7 @@ export const deleteTask = mutation({
   },
 });
 
-// Bulk update tasks
+// Bulk update tasks (updated to handle subtasks)
 export const bulkUpdateTasks = mutation({
   args: {
     taskIds: v.array(v.id("tasks")),
@@ -381,6 +629,17 @@ export const bulkUpdateTasks = mutation({
         v.literal("urgent")
       )),
       dueDate: v.optional(v.float64()),
+      subtasks: v.optional(
+        v.array(
+          v.object({
+            id: v.string(),
+            label: v.string(),
+            completed: v.boolean(),
+            createdAt: v.optional(v.float64()),
+            completedAt: v.optional(v.float64()),
+          })
+        )
+      ),
     }),
   },
   handler: async (ctx, args) => {
@@ -420,12 +679,55 @@ export const bulkUpdateTasks = mutation({
       const oldStatus = task.status;
       const oldPriority = task.priority;
       const oldAssigneeId = task.assigneeId;
+      const oldSubtasks = task.subtasks || [];
 
       // Determine what changed
       const isStatusChanged = updates.status && updates.status !== oldStatus;
       const isPriorityChanged = updates.priority && updates.priority !== oldPriority;
       const isDueDateChanged = updates.dueDate && updates.dueDate !== task.dueDate;
       const isAssigneeChanged = updates.assigneeId && updates.assigneeId !== oldAssigneeId;
+      const isSubtasksChanged = updates.subtasks !== undefined;
+
+      // Handle subtask updates if provided
+      let newSubtasks = oldSubtasks;
+      let subtaskDeltas = {
+        added: [] as any[],
+        removed: [] as any[],
+        updated: [] as any[],
+      };
+
+      if (isSubtasksChanged && updates.subtasks) {
+        // Validate at least one subtask
+        if (updates.subtasks.length === 0) {
+          throw new Error("Tasks must have at least one subtask");
+        }
+
+        // Find differences
+        const oldSubtaskIds = new Set(oldSubtasks.map(st => st.id));
+        const newSubtaskIds = new Set(updates.subtasks.map(st => st.id));
+
+        subtaskDeltas.added = updates.subtasks.filter(st => !oldSubtaskIds.has(st.id));
+        subtaskDeltas.removed = oldSubtasks.filter(st => !newSubtaskIds.has(st.id));
+        subtaskDeltas.updated = updates.subtasks.filter(newSt => {
+          const oldSt = oldSubtasks.find(st => st.id === newSt.id);
+          return oldSt && (oldSt.completed !== newSt.completed || oldSt.label !== newSt.label);
+        });
+
+        newSubtasks = updates.subtasks.map(st => ({
+          ...st,
+          createdAt: st.createdAt || oldSubtasks.find(ost => ost.id === st.id)?.createdAt || Date.now(),
+          completedAt: st.completed
+            ? (st.completedAt || oldSubtasks.find(ost => ost.id === st.id)?.completedAt || Date.now())
+            : undefined
+        }));
+      }
+
+      // Calculate new progress if subtasks changed
+      const progress = isSubtasksChanged && updates.subtasks
+        ? updates.subtasks.length > 0
+          ? Math.round((updates.subtasks.filter(st => st.completed).length / updates.subtasks.length) * 100)
+          : 0
+        : task.progress || 0;
 
       // Check if status is changing to/from completed
       const isCompletingTask = updates.status === "completed" && task.status !== "completed";
@@ -433,6 +735,10 @@ export const bulkUpdateTasks = mutation({
 
       // Prepare the update object
       const updateObj: any = { ...updates };
+      if (isSubtasksChanged) {
+        updateObj.subtasks = newSubtasks;
+        updateObj.progress = progress;
+      }
 
       // If task is being completed, add completion details
       if (isCompletingTask) {
@@ -464,9 +770,76 @@ export const bulkUpdateTasks = mutation({
           newPriority: isPriorityChanged ? updates.priority : oldPriority,
           oldAssigneeId,
           newAssigneeId: isAssigneeChanged ? updates.assigneeId : oldAssigneeId,
-          projectName: project.name
+          projectName: project.name,
+          ...(isSubtasksChanged ? {
+            subtasksAdded: subtaskDeltas.added.length,
+            subtasksRemoved: subtaskDeltas.removed.length,
+            subtasksUpdated: subtaskDeltas.updated.length,
+            newProgress: progress,
+            oldProgress: task.progress || 0
+          } : {})
         }
       });
+
+      // Log subtask changes if any
+      if (isSubtasksChanged) {
+        // Log added subtasks
+        for (const added of subtaskDeltas.added) {
+          await createActivityForUser(ctx, {
+            userId: user._id,
+            actionType: "Added Subtask",
+            targetId: taskId,
+            targetType: "task",
+            description: `Added subtask "${added.label}" to task "${task.name}"`,
+            metadata: {
+              taskId,
+              projectId: task.projectId,
+              subtaskId: added.id,
+              subtaskLabel: added.label,
+              completed: added.completed
+            }
+          });
+        }
+
+        // Log removed subtasks
+        for (const removed of subtaskDeltas.removed) {
+          await createActivityForUser(ctx, {
+            userId: user._id,
+            actionType: "Removed Subtask",
+            targetId: taskId,
+            targetType: "task",
+            description: `Removed subtask "${removed.label}" from task "${task.name}"`,
+            metadata: {
+              taskId,
+              projectId: task.projectId,
+              subtaskId: removed.id,
+              subtaskLabel: removed.label
+            }
+          });
+        }
+
+        // Log updated subtasks
+        for (const updated of subtaskDeltas.updated) {
+          const subtask = newSubtasks.find(st => st.id === updated.id);
+          if (!subtask) continue;
+
+          await createActivityForUser(ctx, {
+            userId: user._id,
+            actionType: "Updated Subtask",
+            targetId: taskId,
+            targetType: "task",
+            description: `Updated subtask "${subtask.label}" in task "${task.name}"`,
+            metadata: {
+              taskId,
+              projectId: task.projectId,
+              subtaskId: subtask.id,
+              subtaskLabel: subtask.label,
+              oldCompleted: oldSubtasks.find(st => st.id === subtask.id)?.completed,
+              newCompleted: subtask.completed
+            }
+          });
+        }
+      }
 
       // Notify previous assignee if unassigned
       if (oldAssigneeId && isAssigneeChanged && updates.assigneeId !== oldAssigneeId) {
@@ -498,7 +871,8 @@ export const bulkUpdateTasks = mutation({
             taskId,
             projectId: task.projectId,
             taskName: task.name,
-            projectName: project.name
+            projectName: project.name,
+            subtasksCount: newSubtasks.length
           }
         });
       }
@@ -543,6 +917,7 @@ export const bulkUpdateTasks = mutation({
   },
 });
 
+// Bulk delete tasks (updated to handle subtasks)
 export const bulkDeleteTasks = mutation({
   args: {
     taskIds: v.array(v.id("tasks")),
@@ -565,6 +940,15 @@ export const bulkDeleteTasks = mutation({
     // Track the number of tasks deleted
     let deletedCount = 0;
 
+    // Track project updates
+    const projectUpdates = new Map<Id<"projects">, {
+      totalDelta: number,
+      completedDelta: number,
+      projectId: Id<"projects">,
+      totalTasks?: number,
+      completedTasks?: number
+    }>();
+
     for (const taskId of taskIds) {
       // Get the task
       const task = await ctx.db.get(taskId);
@@ -574,6 +958,43 @@ export const bulkDeleteTasks = mutation({
       const project = await ctx.db.get(task.projectId);
       if (!project) continue;
 
+      // Initialize project tracking if not exists
+      if (!projectUpdates.has(task.projectId)) {
+        projectUpdates.set(task.projectId, {
+          totalDelta: 0,
+          completedDelta: 0,
+          projectId: task.projectId,
+          totalTasks: project.totalTasks,
+          completedTasks: project.completedTasks
+        });
+      }
+
+      const projectUpdate = projectUpdates.get(task.projectId)!;
+      projectUpdate.totalDelta += 1;
+      if (task.status === "completed") {
+        projectUpdate.completedDelta += 1;
+      }
+
+      // Log subtask deletion activities first
+      if (task.subtasks && task.subtasks.length > 0) {
+        for (const subtask of task.subtasks) {
+          await createActivityForUser(ctx, {
+            userId: user._id,
+            actionType: "Subtask Deleted",
+            targetId: taskId,
+            targetType: "task",
+            description: `Subtask "${subtask.label}" deleted from task "${task.name}"`,
+            metadata: {
+              taskId,
+              projectId: task.projectId,
+              subtaskId: subtask.id,
+              subtaskLabel: subtask.label,
+              deletedBy: user._id
+            }
+          });
+        }
+      }
+
       // Save old assignee ID before deletion
       const oldAssigneeId = task.assigneeId;
 
@@ -581,29 +1002,13 @@ export const bulkDeleteTasks = mutation({
       await ctx.db.delete(taskId);
       deletedCount++;
 
-      // Update project task counts
-      if (project) {
-        await ctx.db.patch(task.projectId, {
-          totalTasks: Math.max(0, (project.totalTasks || 0) - 1),
-          ...(task.status === "completed" ? {
-            completedTasks: Math.max(0, (project.completedTasks || 0) - 1)
-          } : {}),
-          progress: (project.totalTasks || 0) > 1
-            ? Math.round(
-              ((project.completedTasks || 0) - (task.status === "completed" ? 1 : 0)) /
-              ((project.totalTasks || 0) - 1) * 100
-            )
-            : 0
-        });
-      }
-
       // Log activity for the deleting user
       await createActivityForUser(ctx, {
         userId: user._id,
         actionType: "Deleted Task",
         targetId: taskId,
         targetType: "task",
-        description: `Deleted task "${task.name}" from project "${project.name}"`,
+        description: `Deleted task "${task.name}" with ${task.subtasks?.length || 0} subtasks from project "${project.name}"`,
         metadata: {
           taskId,
           projectId: task.projectId,
@@ -611,7 +1016,8 @@ export const bulkDeleteTasks = mutation({
           projectName: project.name,
           deletedBy: user._id,
           status: task.status,
-          assigneeId: task.assigneeId
+          assigneeId: task.assigneeId,
+          subtasksCount: task.subtasks?.length || 0
         }
       });
 
@@ -628,8 +1034,25 @@ export const bulkDeleteTasks = mutation({
             taskId,
             projectId: task.projectId,
             projectName: project.name,
-            taskName: task.name
+            taskName: task.name,
+            subtasksCount: task.subtasks?.length || 0
           }
+        });
+      }
+    }
+
+    // Apply project updates
+    for (const [projectId, update] of projectUpdates.entries()) {
+      if (update.totalDelta > 0) {
+        const newTotalTasks = Math.max(0, (update.totalTasks || 0) - update.totalDelta);
+        const newCompletedTasks = Math.max(0, (update.completedTasks || 0) - update.completedDelta);
+
+        await ctx.db.patch(projectId, {
+          totalTasks: newTotalTasks,
+          completedTasks: newCompletedTasks,
+          progress: newTotalTasks > 0
+            ? Math.round(newCompletedTasks / newTotalTasks * 100)
+            : 0
         });
       }
     }
@@ -637,6 +1060,8 @@ export const bulkDeleteTasks = mutation({
     return { success: true, deletedCount };
   },
 });
+
+// Update task status (updated to handle subtasks)
 export const updateTaskStatus = mutation({
   args: {
     taskId: v.id("tasks"),
@@ -650,7 +1075,7 @@ export const updateTaskStatus = mutation({
   },
   handler: async (ctx, args) => {
     const { taskId, status } = args;
-    
+
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
 
@@ -689,7 +1114,9 @@ export const updateTaskStatus = mutation({
           projectId: task.projectId,
           oldStatus,
           newStatus: status,
-          projectName: project?.name || ""
+          projectName: project?.name || "",
+          subtasksCount: task.subtasks?.length || 0,
+          subtasksCompleted: task.subtasks?.filter(st => st.completed).length || 0
         }
       });
     }

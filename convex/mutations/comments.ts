@@ -25,7 +25,7 @@ export const createComment = mutation({
     const mentionRegex = /@([a-zA-Z0-9._-]+)/g;
     let match;
     const mentionedNames = new Set<string>();
-    
+
     while ((match = mentionRegex.exec(body)) !== null) {
       mentionedNames.add(match[1]);
     }
@@ -82,10 +82,10 @@ export const createComment = mutation({
       },
     });
 
-    return { 
-      commentId, 
+    return {
+      commentId,
       message: "Comment created successfully",
-      mentionedUserIds: allMentionedUserIds 
+      mentionedUserIds: allMentionedUserIds
     };
   },
 });
@@ -94,13 +94,15 @@ export const updateComment = mutation({
   args: {
     commentId: v.id("comments"),
     body: v.string(),
+    targetId: v.string(),
+    targetType: v.string(),
     mentionedUserIds: v.optional(v.array(v.id("users"))),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
 
-    const { commentId, body, mentionedUserIds } = args;
+    const { commentId, body, targetId, targetType, mentionedUserIds } = args;
     const comment = await ctx.db.get(commentId);
 
     if (!comment || comment.authorId !== userId) {
@@ -111,7 +113,7 @@ export const updateComment = mutation({
     const mentionRegex = /@([a-zA-Z0-9._-]+)/g;
     let match;
     const mentionedNames = new Set<string>();
-    
+
     while ((match = mentionRegex.exec(body)) !== null) {
       if (match && match[1]) {
         mentionedNames.add(match[1]);
@@ -147,23 +149,17 @@ export const updateComment = mutation({
       updatedAt: Date.now(),
     });
 
-    // Create notifications for newly mentioned users (excluding the author)
-    const existingMentions = new Set(comment.mentionedUserIds?.map(id => id.toString()) || []);
-    const newMentions = allMentionedUserIds.filter(
-      id => !existingMentions.has(id.toString()) && id.toString() !== userId.toString()
-    );
-
-
-
     // Log activity
     await createActivityForUser(ctx, {
       userId,
       actionType: "Updated Comment",
       targetId: commentId,
       targetType: "comment",
-      description: `Comment updated by user`,
+      description: `A comment on ${targetType} was updated.`,
       metadata: {
         commentId,
+        targetId,
+        targetType,
         oldBody: comment.body,
         newBody: body,
         updatedAt: Date.now(),
@@ -173,121 +169,151 @@ export const updateComment = mutation({
     return { commentId, message: "Comment updated successfully" };
   },
 });
-  export const deleteComment = mutation({
-    args: {
-      commentId: v.id("comments"),
-    },
-    handler: async (ctx, { commentId }) => {
-      const userId = await getAuthUserId(ctx);
-      if (!userId) throw new Error("Unauthorized");
-  
-      const comment = await ctx.db.get(commentId);
-      if (!comment || comment.authorId !== userId) {
-        throw new Error("Comment not found or unauthorized");
-      }
-  
-      await ctx.db.delete(commentId);
-  
-      // 🔔 Log activity
-      await createActivityForUser(ctx, {
-        userId,
-        actionType: "Deleted Comment",
-        targetId: commentId,
-        targetType: "comment",
-        description: `Comment deleted permanently`,
-        metadata: {
-          commentId,
-          body: comment.body,
-          deletedAt: Date.now(),
-        },
-      });
-  
-      return { success: true, message: "Comment deleted successfully" };
-    },
-  });
-  export const addReactionToComment = mutation({
-    args: {
-      commentId: v.id("comments"),
-      userId: v.id("users"),
-      reaction: v.union(v.literal("heart"), v.literal("thumbs_up"), v.literal("thumbs_down")), // Use literals
-    },
-    handler: async (ctx, args) => {
-      const authUserId = await getAuthUserId(ctx);
-      if (!authUserId || authUserId !== args.userId) {
-        throw new Error("Unauthorized");
-      }
-  
-      const { commentId, userId, reaction } = args;
-      const comment = await ctx.db.get(commentId);
-  
-      if (!comment) {
-        throw new Error("Comment not found");
-      }
-  
-      const currentReactions = comment.reactions || {};
-      const usersReacting = currentReactions[reaction] || [];
-  
-      if (!usersReacting.includes(userId)) {
-        usersReacting.push(userId);
-      }
-  
-      const updatedReactions = {
-        ...currentReactions,
-        [reaction]: usersReacting,
-      };
-  
-      await ctx.db.patch(commentId, {
-        reactions: updatedReactions,
+
+export const deleteComment = mutation({
+  args: {
+    commentId: v.id("comments"),
+    targetId: v.string(),
+    targetType: v.string(),
+  },
+  handler: async (ctx, { commentId, targetId, targetType }) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
+
+    const comment = await ctx.db.get(commentId);
+    if (!comment || comment.authorId !== userId) {
+      throw new Error("Comment not found or unauthorized");
+    }
+
+    await ctx.db.delete(commentId);
+
+    // Log activity
+    await createActivityForUser(ctx, {
+      userId,
+      actionType: "Deleted Comment",
+      targetId: commentId,
+      targetType: "comment",
+      description: `A comment on ${targetType} was deleted.`,
+      metadata: {
+        commentId,
+        targetId,
+        targetType,
+        body: comment.body,
+        deletedAt: Date.now(),
+      },
+    });
+
+    return { success: true, message: "Comment deleted successfully" };
+  },
+});
+
+export const addReactionToComment = mutation({
+  args: {
+    commentId: v.id("comments"),
+    userId: v.id("users"),
+    reaction: v.union(v.literal("heart"), v.literal("thumbs_up"), v.literal("thumbs_down")),
+    targetId: v.string(),
+    targetType: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const authUserId = await getAuthUserId(ctx);
+    if (!authUserId || authUserId !== args.userId) {
+      throw new Error("Unauthorized");
+    }
+
+    const { commentId, userId, reaction, targetId, targetType } = args;
+    const comment = await ctx.db.get(commentId);
+    if (!comment) {
+      throw new Error("Comment not found");
+    }
+
+    const currentReactions = comment.reactions || {};
+    const usersReacting = currentReactions[reaction] || [];
+
+    if (!usersReacting.includes(userId)) {
+      usersReacting.push(userId);
+    }
+
+    const updatedReactions = {
+      ...currentReactions,
+      [reaction]: usersReacting,
+    };
+
+    await ctx.db.patch(commentId, {
+      reactions: updatedReactions,
+      updatedAt: Date.now(),
+    });
+
+    await createActivityForUser(ctx, {
+      userId,
+      actionType: "Added Reaction",
+      targetId,
+      targetType,
+      description: `Added '${reaction}' to a comment`,
+      metadata: {
+        commentId,
+        targetId,
+        targetType,
+        reaction,
         updatedAt: Date.now(),
-      });
-  
-      return { success: true, message: `Reaction "${reaction}" added` };
-    },
-  });
-  export const removeReactionFromComment = mutation({
-    args: {
-      commentId: v.id("comments"),
-      userId: v.id("users"),
-      reaction: v.union(v.literal("heart"), v.literal("thumbs_up"), v.literal("thumbs_down")), // Use literals
-    },
-    handler: async (ctx, args) => {
-      const authUserId = await getAuthUserId(ctx);
-      if (!authUserId || authUserId !== args.userId) {
-        throw new Error("Unauthorized");
-      }
-  
-      const { commentId, userId, reaction } = args;
-      const comment = await ctx.db.get(commentId);
-  
-      if (!comment) {
-        throw new Error("Comment not found");
-      }
-  
-      // Safely access reactions or default to empty object
-      const currentReactions = comment.reactions || {};
-      const usersReacting = currentReactions[reaction] || [];
-  
-      // Remove the user from the reaction list
-      const updatedUsersReacting = usersReacting.filter((id) => id !== userId);
-  
-      // Clone the current reactions object
-      const updatedReactions = { ...currentReactions };
-  
-      // Only update if there are changes
-      if (updatedUsersReacting.length > 0) {
-        // If users still reacting, keep them
-        updatedReactions[reaction] = updatedUsersReacting;
-      } else {
-        // If no users left, delete the key entirely instead of setting it to undefined
-        delete updatedReactions[reaction];
-      }
-  
-      // Update the comment in the database
-      await ctx.db.patch(commentId, {
-        reactions: updatedReactions,
+      },
+    });
+
+    return { success: true, message: `Reaction "${reaction}" added` };
+  },
+});
+
+export const removeReactionFromComment = mutation({
+  args: {
+    commentId: v.id("comments"),
+    userId: v.id("users"),
+    reaction: v.union(v.literal("heart"), v.literal("thumbs_up"), v.literal("thumbs_down")),
+    targetId: v.string(),
+    targetType: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const authUserId = await getAuthUserId(ctx);
+    if (!authUserId || authUserId !== args.userId) {
+      throw new Error("Unauthorized");
+    }
+
+    const { commentId, userId, reaction, targetId, targetType } = args;
+    const comment = await ctx.db.get(commentId);
+    if (!comment) {
+      throw new Error("Comment not found");
+    }
+
+    const currentReactions = comment.reactions || {};
+    const usersReacting = currentReactions[reaction] || [];
+    const updatedUsersReacting = usersReacting.filter((id) => id !== userId);
+    const updatedReactions = { ...currentReactions };
+
+    if (updatedUsersReacting.length > 0) {
+      updatedReactions[reaction] = updatedUsersReacting;
+    } else {
+      delete updatedReactions[reaction];
+    }
+
+    await ctx.db.patch(commentId, {
+      reactions: updatedReactions,
+      updatedAt: Date.now(),
+    });
+
+    await createActivityForUser(ctx, {
+      userId,
+      actionType: "Removed Reaction",
+      targetId,
+      targetType,
+      description: `Removed '${reaction}' from a comment`,
+      metadata: {
+        commentId,
+        targetId,
+        targetType,
+        reaction,
         updatedAt: Date.now(),
-      });
-  
-      return { success: true, message: `Reaction "${reaction}" removed` };
-    },
-  });
+      },
+    });
+
+    return { success: true, message: `Reaction "${reaction}" removed` };
+  },
+});

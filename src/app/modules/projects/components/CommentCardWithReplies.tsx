@@ -120,23 +120,24 @@ export function CommentCardWithReplies({ comment }: { comment: CommentWithDetail
         }
 
         try {
+            const payload = {
+                commentId: comment._id,
+                userId: currentUser._id as Id<"users">,
+                reaction,
+                targetId: comment.targetId,
+                targetType: comment.targetType,
+            };
+
             if (hasReacted(reaction)) {
-                await removeReaction({
-                    commentId: comment._id,
-                    userId: currentUser._id as Id<"users">,
-                    reaction,
-                });
+                await removeReaction(payload);
             } else {
-                await addReaction({
-                    commentId: comment._id,
-                    userId: currentUser._id as Id<"users">,
-                    reaction,
-                });
+                await addReaction(payload);
             }
         } catch (error) {
             console.error("Failed to toggle reaction:", error);
             toast.error("Failed to update reaction");
         }
+
     };
 
     /**
@@ -225,6 +226,8 @@ export function CommentCardWithReplies({ comment }: { comment: CommentWithDetail
                 commentId: comment._id,
                 body: editText,
                 mentionedUserIds,
+                targetId: comment.targetId,       // Make sure this exists on your comment object
+                targetType: comment.targetType,   // Make sure this exists on your comment object
             });
             setIsEditing(false);
             toast.success("Comment updated successfully");
@@ -232,6 +235,7 @@ export function CommentCardWithReplies({ comment }: { comment: CommentWithDetail
             console.error("Failed to update comment:", error);
             toast.error("Failed to update comment");
         }
+
     };
 
     /**
@@ -308,7 +312,10 @@ export function CommentCardWithReplies({ comment }: { comment: CommentWithDetail
                         <CommentActionsDropdown
                             commentId={comment._id}
                             authorId={comment.authorId}
+                            targetId={comment.targetId}
+                            targetType={comment.targetType}
                         />
+
                     </div>
 
                     {isEditing ? (
@@ -350,7 +357,7 @@ export function CommentCardWithReplies({ comment }: { comment: CommentWithDetail
                             />
                         </div>
                     ) : (
-                        <div  className="mt-1 text-sm whitespace-pre-line">
+                        <div className="mt-1 text-sm whitespace-pre-line">
                             {parseCommentBody(comment.body, comment.mentionedUserIds, teamMembers)}
                         </div >
                     )}
@@ -457,7 +464,7 @@ export function CommentCardWithReplies({ comment }: { comment: CommentWithDetail
                             onSend={handleReply}
                             targetId={comment.targetType === "project" ? (comment.targetId as Id<"projects">) : undefined}
                             targetType={comment.targetType}
-                    />
+                        />
                     </div>
                 )
             }

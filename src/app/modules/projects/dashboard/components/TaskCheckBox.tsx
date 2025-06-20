@@ -4,7 +4,9 @@ import { Label } from "@/components/ui/label"
 
 type TaskCheckBoxProps = {
   label: string
+  prefixLabel?: string // New: shown before the main label
   subLabel?: string
+  subLabelClassName?: string // Add this line
   description?: string
   checked?: boolean
   onCheckedChange?: (checked: boolean) => void
@@ -12,7 +14,9 @@ type TaskCheckBoxProps = {
 
 export default function TaskCheckBox({
   label,
+  prefixLabel,
   subLabel,
+  subLabelClassName = "text-muted-foreground", // Default class
   description,
   checked,
   onCheckedChange,
@@ -29,14 +33,28 @@ export default function TaskCheckBox({
         aria-describedby={description ? `${id}-description` : undefined}
       />
       <div className="grid grow gap-2">
-        <Label htmlFor={id}>
-          {label}
-          {subLabel && (
-            <span className="text-muted-foreground text-xs leading-[inherit] font-normal">
-              ({subLabel})
-            </span>
-          )}
-        </Label>
+      <Label htmlFor={id} className="font-bold flex flex-col">
+  <span>{label}</span>
+
+  {prefixLabel && (
+    <span className="text-xs font-normal text-muted-foreground mt-1">
+      ({prefixLabel})
+    </span>
+  )}
+
+  {subLabel && (
+    <span
+      className={`text-xs font-normal mt-1 ${subLabelClassName}`}
+    >
+      ({subLabel})
+    </span>
+  )}
+</Label>
+
+
+
+
+
         {description && (
           <p id={`${id}-description`} className="text-muted-foreground text-xs">
             {description}

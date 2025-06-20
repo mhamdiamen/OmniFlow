@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
 import { ClipboardList, Calendar, Flag, CheckCircle2, User, Info, UsersRound, MessageSquare } from "lucide-react";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../../convex/_generated/api";
 import { Id } from "../../../../../../convex/_generated/dataModel";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/dateUtils";
 import { CommentsTab } from "../../components/CommentsTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Subtasks } from "./SubTasks";
 
 interface ViewTaskSheetProps {
     taskId: Id<"tasks"> | null;
@@ -38,6 +39,7 @@ export function ViewTaskSheet({
         api.queries.tasks.getTaskById,
         taskId ? { taskId } : "skip"
     );
+    const updateTask = useMutation(api.mutations.tasks.updateTask);
 
     // Status color mapping
     const statusColors: Record<string, string> = {
@@ -73,6 +75,16 @@ export function ViewTaskSheet({
         "urgent": "Urgent"
     };
 
+    const handleToggleSubtask = async (taskId: Id<"tasks">, subtaskId: string) => {
+        try {
+            await updateTask({
+                taskId,
+                updatedSubtaskId: subtaskId
+            });
+        } catch (error) {
+            console.error("Failed to toggle subtask:", error);
+        }
+    };
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetContent className="overflow-y-auto sm:max-w-2xl md:max-w-3xl lg:max-w-4xl">
@@ -247,8 +259,9 @@ export function ViewTaskSheet({
                             </div>
 
                             {/* Tabs section below header */}
-                            <Tabs defaultValue="comments" className="w-full">
-                                <TabsList className="grid grid-cols-3 w-full mb-4">
+                            <Tabs defaultValue="subtasks" className="w-full">
+                                <TabsList className="grid grid-cols-4 w-full mb-4">
+                                    <TabsTrigger value="subtasks">Subtasks</TabsTrigger>
                                     <TabsTrigger value="comments">Comments</TabsTrigger>
                                     <TabsTrigger value="activity">Activity</TabsTrigger>
                                     <TabsTrigger value="attachments">Attachments</TabsTrigger>
@@ -260,7 +273,21 @@ export function ViewTaskSheet({
                                         targetType="task"
                                     />
                                 )}
-
+                                <TabsContent value="subtasks">
+                                    {task.subtasks && task.subtasks.length > 0 ? (
+                                        <Subtasks
+                                            taskId={taskId!}
+                                            subtasks={task.subtasks}
+                                            onToggleSubtask={(taskId, subtaskId) =>
+                                                handleToggleSubtask(taskId as Id<"tasks">, subtaskId)
+                                            }
+                                        />
+                                    ) : (
+                                        <div className="py-6 px-4 bg-muted/30 rounded-md text-center text-sm text-muted-foreground">
+                                            No subtasks defined for this task.
+                                        </div>
+                                    )}
+                                </TabsContent>
                                 <TabsContent value="activity">
                                     <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
                                         <p>Activity log will appear here</p>

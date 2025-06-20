@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ClipboardList, Trash, Calendar } from "lucide-react";
+import { ClipboardList, Trash, Calendar, CheckCircle2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../../convex/_generated/api";
@@ -78,7 +78,15 @@ export function UpdateTaskDialog({
     const task = useQuery(api.queries.tasks.getTaskById, { taskId });
     const updateTask = useMutation(api.mutations.tasks.updateTask);
     const currentUser = useQuery(api.users.CurrentUser, {});
-
+    const [subtasks, setSubtasks] = useState<
+        Array<{
+            id: string;
+            label: string;
+            completed: boolean;
+            createdAt?: number;
+            completedAt?: number;
+        }>
+    >([]);
     // Fetch team members for the task's project
     const teamMembers = useQuery(
         api.queries.teams.fetchTeamMembersByProject,
@@ -115,8 +123,6 @@ export function UpdateTaskDialog({
     // Populate form with task data when it's loaded
     useEffect(() => {
         if (task && !isInitialized) {
-            console.log("Task data loaded:", task);
-
             setFormState({
                 taskName: task.name,
                 description: task.description || "",
@@ -125,6 +131,15 @@ export function UpdateTaskDialog({
                 assigneeId: task.assigneeId || "",
                 dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
             });
+
+            // Initialize subtasks from task data
+            const initialSubtasks = task.subtasks?.map(st => ({
+                ...st,
+                createdAt: st.createdAt || Date.now(),
+                completedAt: st.completed ? (st.completedAt || Date.now()) : undefined
+            })) || [];
+
+            setSubtasks(initialSubtasks);
 
             setIsInitialized(true);
         }
@@ -174,6 +189,12 @@ export function UpdateTaskDialog({
                 status: formState.status,
                 priority: formState.priority,
                 dueDate: dueDateTimestamp,
+                subtasks: subtasks.map(st => ({
+                    ...st,
+                    createdAt: st.createdAt || Date.now(),
+                    completedAt: st.completed ? (st.completedAt || Date.now()) : undefined
+                  })),
+                
             });
 
             toast.success(`Task "${formState.taskName}" updated successfully!`);
@@ -271,9 +292,79 @@ export function UpdateTaskDialog({
                                         className="w-full"
                                     />
                                 </div>
+                                {/* Subtasks Section */}
+                                <div className="space-y-4 pt-2 border-t">
+                                    <div className="mb-2">
+                                        <h3 className="text-lg font-bold">Subtasks</h3>
+                                        <p className="text-muted-foreground text-sm">
+                                            Define individual steps or actions required to complete this task.
+                                        </p>
+                                    </div>
+
+                                    {/* List of Subtasks */}
+                                    {subtasks.map((subtask, index) => (
+                                        <div key={index} className="flex items-center gap-2">
+                                            <Input
+                                                value={subtask.label}
+                                                onChange={(e) => {
+                                                    const updated = [...subtasks];
+                                                    updated[index].label = e.target.value;
+                                                    setSubtasks(updated);
+                                                }}
+                                                placeholder="Subtask description"
+                                                className="flex-1"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const updated = [...subtasks];
+                                                    updated[index].completed = !updated[index].completed;
+                                                    updated[index].completedAt = updated[index].completed ? Date.now() : undefined;
+                                                    setSubtasks(updated);
+                                                }}
+                                                className={`mt-1 flex-shrink-0 ${subtask.completed ? "text-green-500" : "text-muted-foreground hover:text-foreground"
+                                                    }`}
+                                                aria-label={subtask.completed ? "Mark as incomplete" : "Mark as complete"}
+                                            >
+                                                {subtask.completed ? (
+                                                    <CheckCircle2 className="h-5 w-5" />
+                                                ) : (
+                                                    <div className="h-5 w-5 border rounded-full"></div>
+                                                )}
+                                            </button>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="icon"
+                                                onClick={() => {
+                                                    const updated = [...subtasks];
+                                                    updated.splice(index, 1);
+                                                    setSubtasks(updated);
+                                                }}
+                                            >
+                                                <Trash size={16} />
+                                            </Button>
+                                        </div>
+                                    ))}
+
+                                    {/* Add New Subtask Button */}
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        className="w-full mt-2"
+                                        onClick={() => {
+                                            setSubtasks([
+                                                ...subtasks,
+                                                { id: window.crypto.randomUUID(), label: "", completed: false }
+                                            ]);
+                                        }}
+                                    >
+                                        + Add Subtask
+                                    </Button>
+                                </div>
                             </div>
-                             {/* Assignment and Timeline Section */}
-                             <div className="space-y-4 pt-2 border-t">
+                            {/* Assignment and Timeline Section */}
+                            <div className="space-y-4 pt-2 border-t">
                                 <div className="mb-2">
                                     <h3 className="text-lg font-bold">Assignment and Timeline</h3>
                                     <p className="text-muted-foreground text-sm">
@@ -371,7 +462,7 @@ export function UpdateTaskDialog({
                                     </Select>
                                 </div>
                             </div>
-                           
+
                             <Button type="submit" className="w-full" disabled={loading}>
                                 {loading ? "Updating..." : "Update Task"}
                             </Button>
