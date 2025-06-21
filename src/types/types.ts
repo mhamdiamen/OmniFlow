@@ -33,20 +33,36 @@ export interface User {
     phone?: string;
     // Include other user fields if needed
 }
+export type Subtask = {
+    id: string;
+    label: string;
+    completed: boolean;
+    createdAt?: number; // float64 from Convex
+    completedAt?: number; // float64 from Convex
+  };
+  
+export type Task = {
+  _id: string;
+  name: string;
+  description?: string | null;
 
-export interface Task {
-    _id: string;
-    name: string;
-    description?: string;
-    status: "todo" | "in_progress" | "completed" | "on_hold" | "canceled";
-    priority: "low" | "medium" | "high" | "urgent";
-    dueDate?: number;
-    assigneeId?: string;
-    assignee: User | null;  // Changed to allow null
-    projectId?: string;
-    projectDetails?: { _id: string; name: string } | null;
+  status: "todo" | "in_progress" | "completed" | "on_hold" | "canceled";
+  priority: "low" | "medium" | "high" | "urgent";
 
-}
+  dueDate?: number | null; // float64
+  assigneeId?: string | null;
+  assignee?: User | null;  // Changed to allow null
+
+  projectId: string; // required in schema
+  projectDetails: { _id: string; name: string } | null;
+
+  createdBy: string; // userId
+  completedAt?: number | null;
+  completedBy?: string | null;
+
+  subtasks?: Subtask[]; // embedded array of subtasks
+  progress?: number | null; // 0–100 derived from subtasks
+};
 
 
 export interface Column {

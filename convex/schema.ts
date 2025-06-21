@@ -218,54 +218,54 @@ const schema = defineSchema({
     .index("healthStatus", ["healthStatus"])
     .index("status", ["status"]),
 
-    tasks: defineTable({
-      projectId: v.id("projects"),
-      name: v.string(),
-      description: v.optional(v.string()),
-      assigneeId: v.optional(v.id("users")),
-    
-      status: v.union(
-        v.literal("todo"),
-        v.literal("in_progress"),
-        v.literal("completed"),
-        v.literal("on_hold"),
-        v.literal("canceled")
-      ),
-    
-      priority: v.union(
-        v.literal("low"),
-        v.literal("medium"),
-        v.literal("high"),
-        v.literal("urgent")
-      ),
-    
-      dueDate: v.optional(v.float64()),
-    
-      createdBy: v.id("users"),
-      completedAt: v.optional(v.float64()),
-      completedBy: v.optional(v.id("users")),
-    
-      // ✅ NEW: Subtasks array (embedded)
-      subtasks: v.optional(
-        v.array(
-          v.object({
-            id: v.string(), // nanoid/uuid — unique per subtask
-            label: v.string(), // subtask description/title
-            completed: v.boolean(), // whether this subtask is done
-            createdAt: v.optional(v.float64()), // optional metadata
-            completedAt: v.optional(v.float64()),
-          })
-        )
-      ),
-    
-      // ✅ Optional future-use field
-      progress: v.optional(v.number()), // 0–100 derived from subtasks
-    })
-      .index("projectId", ["projectId"])
-      .index("assigneeId", ["assigneeId"])
-      .index("status", ["status"])
-      .index("dueDate", ["dueDate"]),
-      
+  tasks: defineTable({
+    projectId: v.id("projects"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    assigneeId: v.optional(v.id("users")),
+
+    status: v.union(
+      v.literal("todo"),
+      v.literal("in_progress"),
+      v.literal("completed"),
+      v.literal("on_hold"),
+      v.literal("canceled")
+    ),
+
+    priority: v.union(
+      v.literal("low"),
+      v.literal("medium"),
+      v.literal("high"),
+      v.literal("urgent")
+    ),
+
+    dueDate: v.optional(v.float64()),
+
+    createdBy: v.id("users"),
+    completedAt: v.optional(v.float64()),
+    completedBy: v.optional(v.id("users")),
+
+    // ✅ NEW: Subtasks array (embedded)
+    subtasks: v.optional(
+      v.array(
+        v.object({
+          id: v.string(), // nanoid/uuid — unique per subtask
+          label: v.string(), // subtask description/title
+          completed: v.boolean(), // whether this subtask is done
+          createdAt: v.optional(v.float64()), // optional metadata
+          completedAt: v.optional(v.float64()),
+        })
+      )
+    ),
+
+    // ✅ Optional future-use field
+    progress: v.optional(v.number()), // 0–100 derived from subtasks
+  })
+    .index("projectId", ["projectId"])
+    .index("assigneeId", ["assigneeId"])
+    .index("status", ["status"])
+    .index("dueDate", ["dueDate"]),
+
   // Inside your schema.ts file
   comments: defineTable({
     // Who posted the comment
@@ -316,6 +316,40 @@ const schema = defineSchema({
     .index("projectId", ["projectId"])
     .index("status", ["status"])
     .index("dueDate", ["dueDate"]),
+
+    timeSessions: defineTable({
+      userId: v.id("users"),
+      subjectId: v.string(),
+      subjectType: v.string(),
+      startTime: v.float64(),
+      endTime: v.optional(v.float64()),
+      lastPing: v.optional(v.float64()),
+      lastActivity: v.optional(v.float64()), // Track last user activity timestamp
+      status: v.union(v.literal('active'), v.literal('completed')),
+      inactivityEnded: v.optional(v.boolean()), // Flag if session ended due to inactivity
+      localStartTime: v.optional(v.float64()),
+      localEndTime: v.optional(v.float64()),
+  })
+  .index("by_user_status", ["userId", "status"])
+  .index("by_user_subject_status", ["userId", "subjectId", "status"]),
+
+
+  timeTrackers: defineTable({
+    userId: v.id("users"),
+    subjectId: v.string(),
+    subjectType: v.string(),
+    totalDuration: v.float64(), // in milliseconds
+    updatedAt: v.float64(),
+  }).index("by_user_subject", ["userId", "subjectId"]),
+
+
+  userDailyLogs: defineTable({
+    userId: v.id("users"),
+    date: v.string(), // "YYYY-MM-DD"
+    totalDuration: v.float64(),
+    sessionIds: v.array(v.id("timeSessions")),
+  }).index("by_user_date", ["userId", "date"]),  // Changed from "userId" to "by_user_date"
+
 });
 
 
