@@ -1,4 +1,4 @@
-"use client";
+/* "use client";
 
 import { useQuery } from "convex/react";
 import { useEffect, useState } from "react";
@@ -6,6 +6,7 @@ import { api } from "../../../../../convex/_generated/api";
 import Timer from "@/components/tracker";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { Subtask, Task } from "@/types/types";
+import TimeTracker from "@/components/TimeTracker";
 // 🔽 Import types from your shared types file
 
 export default function TaskTimersPage() {
@@ -42,7 +43,7 @@ export default function TaskTimersPage() {
                             task.subtasks.map((subtask: Subtask) => (
                                 <div key={subtask.id} className="ml-4 mt-2">
                                     <p className="text-sm text-gray-700">{subtask.label}</p>
-                                    <Timer key={subtask.id} subjectId={subtask.id} />
+                                    <TimeTracker key={subtask.id} subjectId={subtask.id} />
                                 </div>
                             ))
                         ) : (
@@ -53,4 +54,4 @@ export default function TaskTimersPage() {
             )}
         </div>
     );
-}
+} */

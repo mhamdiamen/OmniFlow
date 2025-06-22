@@ -26,6 +26,7 @@ import { Subtask, SubtaskDragData } from "@/types/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ModulesManagement/components/ReusableEmptyState";
 import { SubtaskCard } from "./SubTaskCard";
+import { useTimer } from "@/components/Time/TimerProvider";
 
 const statusColumns = [
   { id: "todo", title: "To Do" },
@@ -43,16 +44,19 @@ export function SubtaskKanbanBoard({ projectId }: { projectId: string }) {
   const [activeColumn, setActiveColumn] = useState<Column | null>(null);
   const [activeSubtask, setActiveSubtask] = useState<Subtask | null>(null);
 
-  // 2. Then, context/ID hooks
+  // 2. Timer context
+  const { startTimer } = useTimer();
+
+  // 3. Then, context/ID hooks
   const dndContextId = useId();
 
-  // 3. Then, Convex data hooks
+  // 4. Then, Convex data hooks
   const currentUser = useQuery(api.users.CurrentUser);
-  const updateSubtaskStatus = useMutation(api.mutations.subtasks.updateSubtaskStatus);
-  const updateSubtaskPosition = useMutation(api.mutations.subtasks.updateSubtaskPosition);
-  
+  const updateSubtaskStatus = useMutation(api.mutations.tasks.updateSubtaskStatus);
+  const updateSubtaskPosition = useMutation(api.mutations.tasks.updateSubtaskPosition);
+
   const userSubtasks = useQuery(
-    api.queries.subtasks.fetchSubtasksByAssigneeAndProject,
+    api.queries.tasks.fetchSubtasksByAssigneeAndProject,
     currentUser?._id && projectId
       ? {
         assigneeId: currentUser._id as Id<"users">,
@@ -61,7 +65,7 @@ export function SubtaskKanbanBoard({ projectId }: { projectId: string }) {
       : "skip"
   );
 
-  // 4. Then, other hooks (useMemo, useCallback, useSensors)
+  // 5. Then, other hooks (useMemo, useCallback, useSensors)
   const columnsId = useMemo(() => columns.map((col) => col.id), [columns]);
 
   const handleSubtaskClick = useCallback((subtaskId: string) => {
@@ -161,7 +165,31 @@ export function SubtaskKanbanBoard({ projectId }: { projectId: string }) {
             subtaskId: activeId as Id<"subtasks">,
             status,
           });
+
           console.log("Subtask status updated");
+
+          // If subtask moved to in_progress, start the timer
+          if (status === "in_progress") {
+            const timerSubtask = {
+              id: activeData.subtask._id,
+              title: activeData.subtask.label, // Use 'label' instead of 'title'
+              description: undefined, // Not available in subtask schema
+              status: status,
+              priority: activeData.subtask.parentTask?.priority as "low" | "medium" | "high" | "urgent" | undefined,
+              progress: activeData.subtask.parentTask?.progress, // Get from parent task
+              type: activeData.subtask.parentTask?.name ? `Task: ${activeData.subtask.parentTask.name}` : 'Subtask',
+              parentTask: activeData.subtask.parentTask ? {
+                name: activeData.subtask.parentTask.name, // Use 'name' instead of 'title'
+                projectId: activeData.subtask.parentTask.projectId,
+              } : undefined,
+              projectDetails: activeData.subtask.projectDetails ? {
+                name: activeData.subtask.projectDetails.name, // Use 'name' instead of 'title'
+              } : undefined,
+            };
+
+            startTimer(timerSubtask);
+          }
+
         } catch (error) {
           console.error("Failed to update subtask status:", error);
           // Rollback if update fails
@@ -247,7 +275,7 @@ export function SubtaskKanbanBoard({ projectId }: { projectId: string }) {
                 <BoardColumn
                   key={column.id}
                   column={column}
-                  items={userSubtasks.filter(subtask => subtask.status === column.id)}
+                  items={userSubtasks.filter((subtask: Subtask) => subtask.status === column.id)}
                   onItemClick={handleSubtaskClick}
                   ItemComponent={SubtaskCard}
                 />
@@ -262,7 +290,7 @@ export function SubtaskKanbanBoard({ projectId }: { projectId: string }) {
               {activeColumn && (
                 <BoardColumn
                   column={activeColumn}
-                  items={userSubtasks.filter(subtask => subtask.status === activeColumn.id)}
+                  items={userSubtasks.filter((subtask: Subtask) => subtask.status === activeColumn.id)}
                   ItemComponent={SubtaskCard}
                   isOverlay
                 />
@@ -274,7 +302,7 @@ export function SubtaskKanbanBoard({ projectId }: { projectId: string }) {
       </DndContext>
 
       {/* Add ViewSubtaskSheet component */}
-     {/*  <ViewSubtaskSheet
+      {/*  <ViewSubtaskSheet
         subtaskId={selectedSubtaskId}
         open={isSheetOpen}
         onOpenChange={setIsSheetOpen}

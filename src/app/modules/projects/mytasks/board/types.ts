@@ -1,5 +1,5 @@
 import { UniqueIdentifier } from "@dnd-kit/core";
-import { Id } from "../../convex/_generated/dataModel";
+import { Id } from "../../../../../../convex/_generated/dataModel";
 export type CalendarView = "month" | "week" | "day" | "agenda"
 
 export interface CalendarEvent {

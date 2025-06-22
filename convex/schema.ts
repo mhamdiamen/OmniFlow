@@ -245,19 +245,6 @@ const schema = defineSchema({
     completedAt: v.optional(v.float64()),
     completedBy: v.optional(v.id("users")),
 
-    // ✅ NEW: Subtasks array (embedded)
-    subtasks: v.optional(
-      v.array(
-        v.object({
-          id: v.string(), // nanoid/uuid — unique per subtask
-          label: v.string(), // subtask description/title
-          completed: v.boolean(), // whether this subtask is done
-          createdAt: v.optional(v.float64()), // optional metadata
-          completedAt: v.optional(v.float64()),
-        })
-      )
-    ),
-
     // ✅ Optional future-use field
     progress: v.optional(v.number()), // 0–100 derived from subtasks
   })
@@ -266,6 +253,24 @@ const schema = defineSchema({
     .index("status", ["status"])
     .index("dueDate", ["dueDate"]),
 
+  subtasks: defineTable({
+    taskId: v.id("tasks"),
+    label: v.string(),
+    status: v.union(
+      v.literal("todo"),
+      v.literal("in_progress"),
+      v.literal("completed"),
+      v.literal("on_hold"),
+      v.literal("canceled")
+    ),
+    createdAt: v.float64(),
+    completedAt: v.optional(v.float64()),
+    createdBy: v.id("users"),
+    completedBy: v.optional(v.id("users")),
+    position: v.number(),
+  })
+    .index("taskId", ["taskId"])
+    .index("status", ["status"]),
   // Inside your schema.ts file
   comments: defineTable({
     // Who posted the comment
@@ -317,38 +322,7 @@ const schema = defineSchema({
     .index("status", ["status"])
     .index("dueDate", ["dueDate"]),
 
-    timeSessions: defineTable({
-      userId: v.id("users"),
-      subjectId: v.string(),
-      subjectType: v.string(),
-      startTime: v.float64(),
-      endTime: v.optional(v.float64()),
-      lastPing: v.optional(v.float64()),
-      lastActivity: v.optional(v.float64()), // Track last user activity timestamp
-      status: v.union(v.literal('active'), v.literal('completed')),
-      inactivityEnded: v.optional(v.boolean()), // Flag if session ended due to inactivity
-      localStartTime: v.optional(v.float64()),
-      localEndTime: v.optional(v.float64()),
-  })
-  .index("by_user_status", ["userId", "status"])
-  .index("by_user_subject_status", ["userId", "subjectId", "status"]),
-
-
-  timeTrackers: defineTable({
-    userId: v.id("users"),
-    subjectId: v.string(),
-    subjectType: v.string(),
-    totalDuration: v.float64(), // in milliseconds
-    updatedAt: v.float64(),
-  }).index("by_user_subject", ["userId", "subjectId"]),
-
-
-  userDailyLogs: defineTable({
-    userId: v.id("users"),
-    date: v.string(), // "YYYY-MM-DD"
-    totalDuration: v.float64(),
-    sessionIds: v.array(v.id("timeSessions")),
-  }).index("by_user_date", ["userId", "date"]),  // Changed from "userId" to "by_user_date"
+  
 
 });
 

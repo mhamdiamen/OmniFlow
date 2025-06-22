@@ -45,6 +45,25 @@ export const fetchTasksByProject = query({
     // Execute the query and get the tasks
     const tasks = await tasksQuery.collect();
 
+    // Fetch subtasks for all tasks
+    const taskIds = tasks.map(task => task._id);
+    const allSubtasks = taskIds.length > 0
+      ? await Promise.all(
+        taskIds.map(taskId =>
+          ctx.db
+            .query("subtasks")
+            .withIndex("taskId", (q) => q.eq("taskId", taskId))
+            .order("asc") // Order by position
+            .collect()
+        )
+      )
+      : [];
+
+    // Create a map of task IDs to their subtasks
+    const subtasksMap = new Map(
+      taskIds.map((taskId, index) => [taskId, allSubtasks[index] || []])
+    );
+
     // Fetch assignee details for each task
     const assigneeIds = tasks
       .map(task => task.assigneeId)
@@ -66,10 +85,11 @@ export const fetchTasksByProject = query({
         .map(user => [user!._id, user])
     );
 
-    // Enhance tasks with assignee details
+    // Enhance tasks with assignee details and subtasks
     return tasks.map(task => ({
       ...task,
-      assigneeDetails: task.assigneeId ? userMap.get(task.assigneeId) : null
+      assigneeDetails: task.assigneeId ? userMap.get(task.assigneeId) : null,
+      subtasks: subtasksMap.get(task._id) || []
     }));
   },
 });
@@ -83,6 +103,13 @@ export const getTaskById = query({
     if (!task) {
       return null;
     }
+
+    // Fetch subtasks for this task
+    const subtasks = await ctx.db
+      .query("subtasks")
+      .withIndex("taskId", (q) => q.eq("taskId", args.taskId))
+      .order("asc") // Order by position
+      .collect();
 
     // Fetch project details
     const projectDetails = task.projectId ? await ctx.db.get(task.projectId) : null;
@@ -104,6 +131,7 @@ export const getTaskById = query({
 
     return {
       ...task,
+      subtasks,
       projectDetails,
       assigneeDetails,
       creatorDetails,
@@ -112,47 +140,6 @@ export const getTaskById = query({
   },
 });
 
-export const fetchTasksByAssignee = query({
-  args: {
-    assigneeId: v.id("users"),
-    projectId: v.id("projects"),
-    status: v.optional(v.union(
-      v.literal("todo"),
-      v.literal("in_progress"),
-      v.literal("completed"),
-      v.literal("on_hold"),
-      v.literal("canceled")
-    )),
-  },
-  handler: async (ctx, args) => {
-    const { assigneeId, projectId, status } = args;
-
-    let tasksQuery = ctx.db
-      .query("tasks")
-      .withIndex("assigneeId", (q) => q.eq("assigneeId", assigneeId));
-
-    // Filter by projectId
-    tasksQuery = tasksQuery.filter(q => q.eq(q.field("projectId"), projectId));
-
-    if (status) {
-      tasksQuery = tasksQuery.filter(q => q.eq(q.field("status"), status));
-    }
-
-    const tasks = await tasksQuery.collect();
-
-    // Fetch project details
-    const project = await ctx.db.get(projectId);
-
-    // Fetch assignee details
-    const assignee = await ctx.db.get(assigneeId);
-
-    return tasks.map(task => ({
-      ...task,
-      assignee: assignee || null,
-      projectDetails: project || null,
-    }));
-  },
-});
 
 // Fetch upcoming tasks (due soon)
 export const fetchUpcomingTasks = query({
@@ -180,6 +167,25 @@ export const fetchUpcomingTasks = query({
       .filter(q => q.neq(q.field("status"), "completed"))
       .collect();
 
+    // Fetch subtasks for all tasks
+    const taskIds = tasks.map(task => task._id);
+    const allSubtasks = taskIds.length > 0
+      ? await Promise.all(
+        taskIds.map(taskId =>
+          ctx.db
+            .query("subtasks")
+            .withIndex("taskId", (q) => q.eq("taskId", taskId))
+            .order("asc") // Order by position
+            .collect()
+        )
+      )
+      : [];
+
+    // Create a map of task IDs to their subtasks
+    const subtasksMap = new Map(
+      taskIds.map((taskId, index) => [taskId, allSubtasks[index] || []])
+    );
+
     // Fetch project details
     const projectIds = [...new Set(tasks.map(task => task.projectId))];
 
@@ -193,13 +199,15 @@ export const fetchUpcomingTasks = query({
         .map(project => [project!._id, project])
     );
 
-    // Return tasks with project details
+    // Return tasks with project details and subtasks
     return tasks.map(task => ({
       ...task,
-      projectDetails: projectMap.get(task.projectId)
+      projectDetails: projectMap.get(task.projectId),
+      subtasks: subtasksMap.get(task._id) || []
     }));
   },
 });
+
 export const fetchOverdueTasks = query({
   args: {
     userId: v.id("users"),
@@ -224,6 +232,25 @@ export const fetchOverdueTasks = query({
       )
       .collect();
 
+    // Fetch subtasks for all tasks
+    const taskIds = tasks.map(task => task._id);
+    const allSubtasks = taskIds.length > 0
+      ? await Promise.all(
+        taskIds.map(taskId =>
+          ctx.db
+            .query("subtasks")
+            .withIndex("taskId", (q) => q.eq("taskId", taskId))
+            .order("asc") // Order by position
+            .collect()
+        )
+      )
+      : [];
+
+    // Create a map of task IDs to their subtasks
+    const subtasksMap = new Map(
+      taskIds.map((taskId, index) => [taskId, allSubtasks[index] || []])
+    );
+
     // Fetch project details
     const projectIds = [...new Set(tasks.map((task) => task.projectId))];
 
@@ -237,13 +264,15 @@ export const fetchOverdueTasks = query({
         .map((project) => [project!._id, project])
     );
 
-    // Return tasks with project details
+    // Return tasks with project details and subtasks
     return tasks.map((task) => ({
       ...task,
       projectDetails: projectMap.get(task.projectId),
+      subtasks: subtasksMap.get(task._id) || []
     }));
   },
 });
+
 export const fetchTodaysTasks = query({
   args: {
     userId: v.id("users"),
@@ -267,6 +296,25 @@ export const fetchTodaysTasks = query({
       )
       .collect();
 
+    // Fetch subtasks for all tasks
+    const taskIds = tasks.map(task => task._id);
+    const allSubtasks = taskIds.length > 0
+      ? await Promise.all(
+        taskIds.map(taskId =>
+          ctx.db
+            .query("subtasks")
+            .withIndex("taskId", (q) => q.eq("taskId", taskId))
+            .order("asc") // Order by position
+            .collect()
+        )
+      )
+      : [];
+
+    // Create a map of task IDs to their subtasks
+    const subtasksMap = new Map(
+      taskIds.map((taskId, index) => [taskId, allSubtasks[index] || []])
+    );
+
     const projectIds = [...new Set(tasks.map(task => task.projectId))];
 
     const projects = await Promise.all(
@@ -282,6 +330,7 @@ export const fetchTodaysTasks = query({
     return tasks.map(task => ({
       ...task,
       projectDetails: projectMap.get(task.projectId),
+      subtasks: subtasksMap.get(task._id) || []
     }));
   },
 });
@@ -346,6 +395,26 @@ export const fetchAllTasks = query({
     // Execute the query and get the tasks
     const tasks = await tasksQuery.collect();
 
+    // Fetch subtasks for all tasks
+    const taskIds = tasks.map(task => task._id);
+    const allSubtasks = taskIds.length > 0
+      ? await Promise.all(
+        taskIds.map(taskId =>
+          ctx.db
+            .query("subtasks")
+            .withIndex("taskId", (q) => q.eq("taskId", taskId))
+            .order("asc")
+            .collect()
+        )
+      )
+      : [];
+
+    // Create a map of task IDs to their subtasks
+    const subtaskMap = new Map();
+    allSubtasks.forEach((subtasks, index) => {
+      subtaskMap.set(taskIds[index], subtasks.sort((a, b) => a.position - b.position));
+    });
+
     // Fetch assignee details for each task
     const assigneeIds = tasks
       .map(task => task.assigneeId)
@@ -372,14 +441,16 @@ export const fetchAllTasks = query({
       projects.map(project => [project._id, project])
     );
 
-    // Enhance tasks with assignee and project details
+    // Enhance tasks with assignee, project details, and subtasks
     return tasks.map(task => ({
       ...task,
       assigneeDetails: task.assigneeId ? userMap.get(task.assigneeId) : null,
-      projectDetails: projectMap.get(task.projectId) || null
+      projectDetails: projectMap.get(task.projectId) || null,
+      subtasks: subtaskMap.get(task._id) || []
     }));
   },
 });
+
 export const fetchAllTasksByAssignee = query({
   args: {
     assigneeId: v.id("users"),
@@ -416,6 +487,26 @@ export const fetchAllTasksByAssignee = query({
 
     const tasks = await tasksQuery.collect();
 
+    // Fetch subtasks for all tasks
+    const taskIds = tasks.map(task => task._id);
+    const allSubtasks = taskIds.length > 0
+      ? await Promise.all(
+        taskIds.map(taskId =>
+          ctx.db
+            .query("subtasks")
+            .withIndex("taskId", (q) => q.eq("taskId", taskId))
+            .order("asc")
+            .collect()
+        )
+      )
+      : [];
+
+    // Create a map of task IDs to their subtasks
+    const subtaskMap = new Map();
+    allSubtasks.forEach((subtasks, index) => {
+      subtaskMap.set(taskIds[index], subtasks.sort((a, b) => a.position - b.position));
+    });
+
     // Get unique project IDs from tasks
     const projectIds = [...new Set(tasks.map(task => task.projectId))];
 
@@ -435,7 +526,265 @@ export const fetchAllTasksByAssignee = query({
     return tasks.map(task => ({
       ...task,
       projectDetails: projectMap.get(task.projectId) || null,
-      assigneeDetails: assignee || null
+      assigneeDetails: assignee || null,
+      subtasks: subtaskMap.get(task._id) || []
     }));
+  },
+});
+export const fetchTasksByAssignee = query({
+  args: {
+    assigneeId: v.id("users"),
+    projectId: v.id("projects"),
+    status: v.optional(v.union(
+      v.literal("todo"),
+      v.literal("in_progress"),
+      v.literal("completed"),
+      v.literal("on_hold"),
+      v.literal("canceled")
+    )),
+  },
+  handler: async (ctx, args) => {
+    const { assigneeId, projectId, status } = args;
+
+    let tasksQuery = ctx.db
+      .query("tasks")
+      .withIndex("assigneeId", (q) => q.eq("assigneeId", assigneeId));
+
+    // Filter by projectId
+    tasksQuery = tasksQuery.filter(q => q.eq(q.field("projectId"), projectId));
+
+    if (status) {
+      tasksQuery = tasksQuery.filter(q => q.eq(q.field("status"), status));
+    }
+
+    const tasks = await tasksQuery.collect();
+
+    // Fetch subtasks for all tasks
+    const taskIds = tasks.map(task => task._id);
+    const allSubtasks = taskIds.length > 0
+      ? await Promise.all(
+        taskIds.map(taskId =>
+          ctx.db
+            .query("subtasks")
+            .withIndex("taskId", (q) => q.eq("taskId", taskId))
+            .order("asc") // Order by position
+            .collect()
+        )
+      )
+      : [];
+
+    // Create a map of task IDs to their subtasks
+    const subtasksMap = new Map(
+      taskIds.map((taskId, index) => [taskId, allSubtasks[index] || []])
+    );
+
+    // Fetch project details
+    const project = await ctx.db.get(projectId);
+
+    // Fetch assignee details
+    const assignee = await ctx.db.get(assigneeId);
+
+    return tasks.map(task => ({
+      ...task,
+      assignee: assignee || null,
+      projectDetails: project || null,
+      subtasks: subtasksMap.get(task._id) || []
+    }));
+  },
+});
+
+
+// Fetch all subtasks for a specific assignee
+export const fetchAllSubtasksByAssignee = query({
+  args: {
+    assigneeId: v.id("users"),
+    status: v.optional(v.union(
+      v.literal("todo"),
+      v.literal("in_progress"),
+      v.literal("completed"),
+      v.literal("on_hold"),
+      v.literal("canceled")
+    )),
+  },
+  handler: async (ctx, args) => {
+    const { assigneeId, status } = args;
+
+    // First, get all tasks assigned to this user
+    let tasksQuery = ctx.db
+      .query("tasks")
+      .withIndex("assigneeId", (q) => q.eq("assigneeId", assigneeId));
+
+    const tasks = await tasksQuery.collect();
+    const taskIds = tasks.map(task => task._id);
+
+    if (taskIds.length === 0) {
+      return [];
+    }
+
+    // Get all subtasks for these tasks
+    const allSubtasks = await Promise.all(
+      taskIds.map(taskId =>
+        ctx.db
+          .query("subtasks")
+          .withIndex("taskId", (q) => q.eq("taskId", taskId))
+          .collect()
+      )
+    );
+
+    // Flatten the subtasks array
+    let subtasks = allSubtasks.flat();
+
+    // Apply status filter if provided
+    if (status) {
+      subtasks = subtasks.filter(subtask => subtask.status === status);
+    }
+
+    // Create maps for quick lookup
+    const taskMap = new Map(tasks.map(task => [task._id, task]));
+
+    // Get unique project IDs from tasks
+    const projectIds = [...new Set(tasks.map(task => task.projectId))];
+    const projects = await Promise.all(
+      projectIds.map(id => ctx.db.get(id))
+    );
+    const projectMap = new Map(
+      projects.filter(p => p !== null).map(p => [p!._id, p])
+    );
+
+    // Fetch assignee details
+    const assignee = await ctx.db.get(assigneeId);
+
+    return subtasks
+      .sort((a, b) => a.position - b.position)
+      .map(subtask => {
+        const parentTask = taskMap.get(subtask.taskId);
+        return {
+          ...subtask,
+          parentTask: parentTask || null,
+          projectDetails: parentTask ? projectMap.get(parentTask.projectId) || null : null,
+          assigneeDetails: assignee || null,
+        };
+      });
+  },
+});
+
+// Fetch subtasks by assignee and project - THIS IS THE MISSING QUERY
+export const fetchSubtasksByAssigneeAndProject = query({
+  args: {
+    assigneeId: v.id("users"),
+    projectId: v.id("projects"),
+    status: v.optional(v.union(
+      v.literal("todo"),
+      v.literal("in_progress"),
+      v.literal("completed"),
+      v.literal("on_hold"),
+      v.literal("canceled")
+    )),
+  },
+  handler: async (ctx, args) => {
+    const { assigneeId, projectId, status } = args;
+
+    // Get all tasks assigned to this user in the specific project
+    let tasksQuery = ctx.db
+      .query("tasks")
+      .withIndex("assigneeId", (q) => q.eq("assigneeId", assigneeId))
+      .filter(q => q.eq(q.field("projectId"), projectId));
+
+    const tasks = await tasksQuery.collect();
+    const taskIds = tasks.map(task => task._id);
+
+    if (taskIds.length === 0) {
+      return [];
+    }
+
+    // Get all subtasks for these tasks
+    const allSubtasks = await Promise.all(
+      taskIds.map(taskId =>
+        ctx.db
+          .query("subtasks")
+          .withIndex("taskId", (q) => q.eq("taskId", taskId))
+          .collect()
+      )
+    );
+
+    // Flatten the subtasks array
+    let subtasks = allSubtasks.flat();
+
+    // Apply status filter if provided
+    if (status) {
+      subtasks = subtasks.filter(subtask => subtask.status === status);
+    }
+
+    // Create task map for quick lookup
+    const taskMap = new Map(tasks.map(task => [task._id, task]));
+
+    // Fetch project and assignee details
+    const project = await ctx.db.get(projectId);
+    const assignee = await ctx.db.get(assigneeId);
+
+    return subtasks
+      .sort((a, b) => a.position - b.position)
+      .map(subtask => {
+        const parentTask = taskMap.get(subtask.taskId);
+        return {
+          ...subtask,
+          parentTask: parentTask || null,
+          projectDetails: project || null,
+          assigneeDetails: assignee || null,
+        };
+      });
+  },
+});
+
+// Helper query to fetch subtasks by specific task
+export const fetchSubtasksByTaskId = query({
+  args: {
+    taskId: v.id("tasks"),
+  },
+  handler: async (ctx, args) => {
+    const { taskId } = args;
+
+    const subtasks = await ctx.db
+      .query("subtasks")
+      .withIndex("taskId", (q) => q.eq("taskId", taskId))
+      .collect();
+
+    // Sort by position to maintain order
+    return subtasks.sort((a, b) => a.position - b.position);
+  },
+});
+
+// Fetch a single subtask by ID
+export const getSubtaskById = query({
+  args: { subtaskId: v.id("subtasks") },
+  handler: async (ctx, args) => {
+    const subtask = await ctx.db.get(args.subtaskId);
+
+    if (!subtask) {
+      return null;
+    }
+
+    // Fetch parent task details
+    const parentTask = await ctx.db.get(subtask.taskId);
+    
+    // Fetch project details through parent task
+    const projectDetails = parentTask?.projectId ? await ctx.db.get(parentTask.projectId) : null;
+
+    // Fetch creator details
+    const creatorDetails = await ctx.db.get(subtask.createdBy);
+
+    // Fetch completer details if available
+    let completerDetails = null;
+    if (subtask.completedBy) {
+      completerDetails = await ctx.db.get(subtask.completedBy);
+    }
+
+    return {
+      ...subtask,
+      parentTask,
+      projectDetails,
+      creatorDetails,
+      completerDetails
+    };
   },
 });
