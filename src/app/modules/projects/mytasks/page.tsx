@@ -17,7 +17,6 @@ import { Badge } from "@/components/ui/badge";
 import { TasksTable } from "../tasks/components/TasksTable";
 import Component from "@/app/modules/projects/mytasks/TaskCalendar";
 import TaskCalendar from "@/app/modules/projects/mytasks/TaskCalendar";
-import { ReadOnlyTasksTable } from "./ReadOnlyTasksTable";
 
 export default function MyTasksPage() {
   // Get current user
@@ -82,27 +81,13 @@ export default function MyTasksPage() {
                     {projectsCount}
                   </Badge>
                 </TabsTrigger>
-                <TabsTrigger value="calendar" className="group">
+                <TabsTrigger value="table" className="group">
                   <Calendar
                     className="-ms-0.5 me-1.5 opacity-60"
                     size={16}
                     aria-hidden="true"
                   />
                   Calendar
-                  <Badge
-                    className="bg-primary/15 ms-1.5 min-w-5 px-1 transition-opacity group-data-[state=inactive]:opacity-50"
-                    variant="secondary"
-                  >
-                    {tasks?.length ?? 0}
-                  </Badge>
-                </TabsTrigger>
-                <TabsTrigger value="table" className="group">
-                  <Table
-                    className="-ms-0.5 me-1.5 opacity-60"
-                    size={16}
-                    aria-hidden="true"
-                  />
-                  Table
                   <Badge
                     className="bg-primary/15 ms-1.5 min-w-5 px-1 transition-opacity group-data-[state=inactive]:opacity-50"
                     variant="secondary"
@@ -133,23 +118,6 @@ export default function MyTasksPage() {
               />
             </TabsContent>
 
-            {/* Calendar View Tab */}
-            <TabsContent value="calendar" className="flex-1">
-              {!tasks ? (
-                <div className="space-y-4">
-                  <Skeleton className="h-16 w-full" />
-                  <Skeleton className="h-16 w-full" />
-                  <Skeleton className="h-16 w-full" />
-                </div>
-              ) : tasks.length === 0 ? (
-                <div className="flex justify-center items-center py-10">
-                  <p className="text-muted-foreground">No tasks assigned to you</p>
-                </div>
-              ) : (
-                <TaskCalendar />
-              )}
-            </TabsContent>
-
             {/* Table View Tab */}
             <TabsContent value="table" className="flex-1">
               {!tasks ? (
@@ -163,7 +131,7 @@ export default function MyTasksPage() {
                   <p className="text-muted-foreground">No tasks assigned to you</p>
                 </div>
               ) : (
-                <ReadOnlyTasksTable tasks={tasks} />
+                <TaskCalendar />
               )}
             </TabsContent>
           </Tabs>

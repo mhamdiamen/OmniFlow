@@ -6,7 +6,8 @@ import { cva } from "class-variance-authority";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Subtask } from "@/types/types";
+import { Task } from "@/types/types";
+import { TaskCard } from "./TaskCard";
 import { FilePlus } from "lucide-react";
 
 export interface Column {
@@ -21,31 +22,18 @@ export type ColumnDragData = {
   column: Column;
 }
 
-// Define the props that your ItemComponent should receive
-interface ItemComponentProps {
-  subtask: Subtask;
-  onClick?: (subtaskId: string) => void;
-  isOverlay?: boolean;
-}
-
 interface BoardColumnProps {
   column: Column;
-  items: Subtask[];
+  tasks: Task[];
   isOverlay?: boolean;
-  onItemClick?: (subtaskId: string) => void;
-  ItemComponent: React.ComponentType<ItemComponentProps>; // Properly typed component
+  onTaskClick?: (taskId: string) => void; // Add onTaskClick prop
+
 }
 
-export const BoardColumn = ({ 
-  column, 
-  items, 
-  isOverlay, 
-  onItemClick,
-  ItemComponent 
-}: BoardColumnProps) => {
-  const itemIds = useMemo(() => {
-    return items.map((item) => item._id);
-  }, [items]);
+export const BoardColumn = ({ column, tasks, isOverlay, onTaskClick }: BoardColumnProps) => {
+  const taskIds = useMemo(() => {
+    return tasks.map((task) => task._id);
+  }, [tasks]);
 
   const { setNodeRef, transform, transition, isDragging, isOver } = useSortable({
     id: column.id,
@@ -109,25 +97,25 @@ export const BoardColumn = ({
         <div className="flex items-center gap-3">
           <h1 className="font-bold text-base">{column.title}</h1>
           <Badge className="h-5 w-5 flex items-center justify-center p-0">
-            {items.length}
+            {tasks.length}
           </Badge>
         </div>
       </CardHeader>
       <ScrollArea>
         <CardContent className="flex flex-grow flex-col gap-2 p-2">
-          <SortableContext items={itemIds}>
-            {items.length === 0 ? (
+          <SortableContext items={taskIds}>
+            {tasks.length === 0 ? (
               <div className="flex flex-grow flex-col items-center justify-center text-center rounded-xl border border-dashed border-gray-500 p-6 ">
                 <FilePlus className="h-10 w-10 mb-3 text-gray-500" />
-                <p className="text-sm font-medium text-gray-500">No subtasks yet</p>
-                <p className="text-xs text-gray-400">Start by dragging subtasks here.</p>
+                <p className="text-sm font-medium text-gray-500">No tasks yet</p>
+                <p className="text-xs text-gray-400">Start by dragging new task here.</p>
               </div>
             ) : (
-              items.map((item) => (
-                <ItemComponent
-                  key={item._id}
-                  subtask={item}
-                  onClick={onItemClick}
+              tasks.map((task) => (
+                <TaskCard
+                  key={task._id}
+                  task={task}
+                  onClick={onTaskClick}
                 />
               ))
             )}

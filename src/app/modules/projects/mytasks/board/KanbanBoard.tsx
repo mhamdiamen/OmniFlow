@@ -22,10 +22,11 @@ import { Column, BoardColumn, BoardContainer, ColumnDragData } from "./BoardColu
 import { coordinateGetter } from "./multipleContainersKeyboardPreset";
 import { Id } from "../../../../../../convex/_generated/dataModel";
 import { api } from "../../../../../../convex/_generated/api";
-import { Subtask, SubtaskDragData } from "@/types/types";
+import { Task, TaskDragData } from "@/types/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ModulesManagement/components/ReusableEmptyState";
-import { SubtaskCard } from "./SubTaskCard";
+import { TaskCard } from "./TaskCard";
+import { ViewTaskSheet } from "../../tasks/components/ViewTaskSheet";
 
 const statusColumns = [
   { id: "todo", title: "To Do" },
@@ -35,24 +36,23 @@ const statusColumns = [
   { id: "canceled", title: "Canceled" },
 ];
 
-export function SubtaskKanbanBoard({ projectId }: { projectId: string }) {
+export function KanbanBoard({ projectId }: { projectId: string }) {
+
   // 1. First, state hooks
-  const [selectedSubtaskId, setSelectedSubtaskId] = useState<Id<"subtasks"> | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<Id<"tasks"> | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [columns] = useState<Column[]>(statusColumns);
   const [activeColumn, setActiveColumn] = useState<Column | null>(null);
-  const [activeSubtask, setActiveSubtask] = useState<Subtask | null>(null);
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
 
   // 2. Then, context/ID hooks
   const dndContextId = useId();
 
   // 3. Then, Convex data hooks
   const currentUser = useQuery(api.users.CurrentUser);
-  const updateSubtaskStatus = useMutation(api.mutations.subtasks.updateSubtaskStatus);
-  const updateSubtaskPosition = useMutation(api.mutations.subtasks.updateSubtaskPosition);
-  
-  const userSubtasks = useQuery(
-    api.queries.subtasks.fetchSubtasksByAssigneeAndProject,
+  const updateTaskStatus = useMutation(api.mutations.tasks.updateTaskStatus);
+  const userTasks = useQuery(
+    api.queries.tasks.fetchTasksByAssignee,
     currentUser?._id && projectId
       ? {
         assigneeId: currentUser._id as Id<"users">,
@@ -64,10 +64,15 @@ export function SubtaskKanbanBoard({ projectId }: { projectId: string }) {
   // 4. Then, other hooks (useMemo, useCallback, useSensors)
   const columnsId = useMemo(() => columns.map((col) => col.id), [columns]);
 
-  const handleSubtaskClick = useCallback((subtaskId: string) => {
-    setSelectedSubtaskId(subtaskId as Id<"subtasks">);
+
+
+
+
+  const handleTaskClick = useCallback((taskId: string) => {
+    setSelectedTaskId(taskId as Id<"tasks">);
     setIsSheetOpen(true);
   }, []);
+
 
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -89,7 +94,7 @@ export function SubtaskKanbanBoard({ projectId }: { projectId: string }) {
   const hasDraggableData = <T extends Active | Over>(
     entry: T | null | undefined
   ): entry is T & {
-    data: DataRef<SubtaskDragData | ColumnDragData>;
+    data: DataRef<TaskDragData | ColumnDragData>;
   } => {
     if (!entry) {
       return false;
@@ -97,12 +102,13 @@ export function SubtaskKanbanBoard({ projectId }: { projectId: string }) {
 
     const data = entry.data.current;
 
-    if (data?.type === "Column" || data?.type === "Subtask") {
+    if (data?.type === "Column" || data?.type === "Task") {
       return true;
     }
 
     return false;
   };
+
 
   const onDragStart = (event: DragStartEvent) => {
     if (!hasDraggableData(event.active)) return;
@@ -112,15 +118,15 @@ export function SubtaskKanbanBoard({ projectId }: { projectId: string }) {
       return;
     }
 
-    if (data?.type === "Subtask") {
-      setActiveSubtask(data.subtask);
+    if (data?.type === "Task") {
+      setActiveTask(data.task);
       return;
     }
   };
 
   const onDragEnd = async (event: DragEndEvent) => {
     setActiveColumn(null);
-    setActiveSubtask(null);
+    setActiveTask(null);
 
     const { active, over } = event;
     if (!over) return;
@@ -134,17 +140,17 @@ export function SubtaskKanbanBoard({ projectId }: { projectId: string }) {
 
     if (activeId === overId) return;
 
-    if (activeData?.type === "Subtask") {
+    if (activeData?.type === "Task") {
       const validStatuses = ["todo", "in_progress", "completed", "on_hold", "canceled"] as const;
       type ValidStatus = typeof validStatuses[number];
 
       const newColumnId = hasDraggableData(over)
         ? over.data.current?.type === "Column"
           ? over.id as string
-          : over.data.current?.subtask.status
+          : over.data.current?.task.status
         : over.id as string;
 
-      const oldColumnId = activeData.subtask.status;
+      const oldColumnId = activeData.task.status;
 
       if (
         typeof newColumnId === "string" &&
@@ -153,23 +159,25 @@ export function SubtaskKanbanBoard({ projectId }: { projectId: string }) {
       ) {
         const status = newColumnId as ValidStatus;
 
-        // Optimistically update the local subtask's status
-        activeData.subtask.status = status;
+        // Optimistically update the local task's status
+        activeData.task.status = status;
 
         try {
-          await updateSubtaskStatus({
-            subtaskId: activeId as Id<"subtasks">,
+          await updateTaskStatus({
+            taskId: activeId as Id<"tasks">,
             status,
           });
-          console.log("Subtask status updated");
+          console.log("Task status updated");
         } catch (error) {
-          console.error("Failed to update subtask status:", error);
+          console.error("Failed to update task status:", error);
           // Rollback if update fails
-          activeData.subtask.status = oldColumnId;
+          activeData.task.status = oldColumnId;
         }
       }
     }
   };
+
+
 
   const onDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
@@ -185,30 +193,23 @@ export function SubtaskKanbanBoard({ projectId }: { projectId: string }) {
     const activeData = active.data.current;
     const overData = over.data.current;
 
-    const isActiveASubtask = activeData?.type === "Subtask";
-    const isOverASubtask = overData?.type === "Subtask";
+    const isActiveATask = activeData?.type === "Task";
+    const isOverATask = overData?.type === "Task";
 
-    if (!isActiveASubtask) return;
+    if (!isActiveATask) return;
 
-    if (isActiveASubtask && isOverASubtask) {
-      // Handle subtask reordering within the same column if needed
-      const activeSubtask = activeData.subtask;
-      const overSubtask = overData.subtask;
-
-      if (activeSubtask.status === overSubtask.status) {
-        // Same column reordering logic could be implemented here
-        // You might want to update positions based on the drop location
-      }
+    if (isActiveATask && isOverATask) {
+      // You can implement task reordering within the same column if needed
     }
 
     const isOverAColumn = overData?.type === "Column";
 
-    if (isActiveASubtask && isOverAColumn) {
+    if (isActiveATask && isOverAColumn) {
       // The status change will be handled in onDragEnd
     }
   };
 
-  if (!currentUser || !userSubtasks) {
+  if (!currentUser || !userTasks) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-16 w-full" />
@@ -218,20 +219,22 @@ export function SubtaskKanbanBoard({ projectId }: { projectId: string }) {
     );
   }
 
-  if (userSubtasks.length === 0) {
+  if (userTasks.length === 0) {
     return (
       <div className="flex justify-center items-center py-10">
         <EmptyState
-          title="No subtasks assigned to you"
-          description="You don't have any subtasks assigned in this project."
+          title="No tasks assigned to you"
+          description="You don't have any tasks assigned to this project."
           imageSrc="/chapters-empty.png"
         />
       </div>
     );
   }
 
+
   return (
     <>
+
       <DndContext
         id={dndContextId}
         sensors={sensors}
@@ -247,9 +250,9 @@ export function SubtaskKanbanBoard({ projectId }: { projectId: string }) {
                 <BoardColumn
                   key={column.id}
                   column={column}
-                  items={userSubtasks.filter(subtask => subtask.status === column.id)}
-                  onItemClick={handleSubtaskClick}
-                  ItemComponent={SubtaskCard}
+                  tasks={userTasks.filter(task => task.status === column.id)}
+                  onTaskClick={handleTaskClick} // Pass the click handler
+
                 />
               ))}
             </SortableContext>
@@ -262,23 +265,23 @@ export function SubtaskKanbanBoard({ projectId }: { projectId: string }) {
               {activeColumn && (
                 <BoardColumn
                   column={activeColumn}
-                  items={userSubtasks.filter(subtask => subtask.status === activeColumn.id)}
-                  ItemComponent={SubtaskCard}
+                  tasks={userTasks.filter(task => task.status === activeColumn.id)}
                   isOverlay
                 />
               )}
-              {activeSubtask && <SubtaskCard subtask={activeSubtask} isOverlay />}
+              {activeTask && <TaskCard task={activeTask} isOverlay />}
             </DragOverlay>,
             document.body
           )}
       </DndContext>
 
-      {/* Add ViewSubtaskSheet component */}
-     {/*  <ViewSubtaskSheet
-        subtaskId={selectedSubtaskId}
+      {/* Add ViewTaskSheet component */}
+      <ViewTaskSheet
+        taskId={selectedTaskId}
         open={isSheetOpen}
         onOpenChange={setIsSheetOpen}
-      /> */}
+      />
     </>
+
   );
 }

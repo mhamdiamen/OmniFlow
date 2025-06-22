@@ -197,11 +197,12 @@ export function CreateTaskSheet({
                 status,
                 priority,
                 dueDate: dueDateTimestamp,
-                subtasks: subtasks.map((st, index) => ({
-                  label: st.label,
-                  position: index + 1  // Generate position based on array index
+                subtasks: subtasks.map(st => ({
+                    ...st,
+                    createdAt: st.createdAt || Date.now(),
+                    completedAt: st.completed ? Date.now() : undefined
                 })),
-              });
+            });
 
             toast.success(`Task "${taskName}" created successfully!`);
 

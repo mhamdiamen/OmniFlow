@@ -75,7 +75,7 @@ export function ViewTaskSheet({
         "urgent": "Urgent"
     };
 
-    const handleToggleSubtask = async (taskId: Id<"tasks">, subtaskId: Id<"subtasks">) => {
+    const handleToggleSubtask = async (taskId: Id<"tasks">, subtaskId: string) => {
         try {
             await updateTask({
                 taskId,
@@ -85,10 +85,10 @@ export function ViewTaskSheet({
             console.error("Failed to toggle subtask:", error);
         }
     };
-
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetContent className="overflow-y-auto sm:max-w-2xl md:max-w-3xl lg:max-w-4xl">
+
                 <SheetHeader className="pb-4">
                     <SheetTitle className="flex items-center gap-2 text-2xl font-bold">
                         <ClipboardList className="h-6 w-6" />
@@ -267,12 +267,20 @@ export function ViewTaskSheet({
                                     <TabsTrigger value="attachments">Attachments</TabsTrigger>
                                 </TabsList>
 
+                                {taskId && (
+                                    <CommentsTab
+                                        targetId={taskId}
+                                        targetType="task"
+                                    />
+                                )}
                                 <TabsContent value="subtasks">
                                     {task.subtasks && task.subtasks.length > 0 ? (
                                         <Subtasks
                                             taskId={taskId!}
                                             subtasks={task.subtasks}
-                                            onToggleSubtask={handleToggleSubtask}
+                                            onToggleSubtask={(taskId, subtaskId) =>
+                                                handleToggleSubtask(taskId as Id<"tasks">, subtaskId)
+                                            }
                                         />
                                     ) : (
                                         <div className="py-6 px-4 bg-muted/30 rounded-md text-center text-sm text-muted-foreground">
@@ -280,16 +288,6 @@ export function ViewTaskSheet({
                                         </div>
                                     )}
                                 </TabsContent>
-
-                                <TabsContent value="comments">
-                                    {taskId && (
-                                        <CommentsTab
-                                            targetId={taskId}
-                                            targetType="task"
-                                        />
-                                    )}
-                                </TabsContent>
-
                                 <TabsContent value="activity">
                                     <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
                                         <p>Activity log will appear here</p>
@@ -303,6 +301,8 @@ export function ViewTaskSheet({
                                 </TabsContent>
                             </Tabs>
                         </div>
+
+
                     </div>
                 ) : (
                     // Loading state

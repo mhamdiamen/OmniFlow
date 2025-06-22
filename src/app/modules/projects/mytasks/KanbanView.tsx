@@ -1,5 +1,7 @@
 // components/kanban-view.tsx
 "use client";
+
+import { KanbanBoard } from "./board/KanbanBoard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from 'convex/react';
@@ -8,7 +10,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Folder, HashIcon } from "lucide-react";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { api } from "../../../../../convex/_generated/api";
-import { SubtaskKanbanBoard } from "./board/SubtaskKanbanBoard";
 
 interface KanbanViewProps {
   teamId: Id<"teams">;
@@ -26,7 +27,7 @@ export function KanbanView({ teamId, searchQuery, autoSelectedProjectId }: Kanba
   );
 
   // Filter projects based on search query
-  const filteredProjects = projectsData?.filter((project) =>
+  const filteredProjects = projectsData?.filter(project =>
     project.name.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
 
@@ -55,12 +56,13 @@ export function KanbanView({ teamId, searchQuery, autoSelectedProjectId }: Kanba
           orientation="vertical"
           className="flex h-full w-full gap-2"
         >
-          <div className="flex flex-col h-full border-r border-border w-[250px]">
+          <div className="flex flex-col h-full border-r  border-border w-[250px]">
             {/* Projects header with icon */}
             <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
               <Folder className="w-4 h-4 text-muted-foreground" />
               <h3 className="font-medium text-sm">Projects</h3>
             </div>
+
             <TabsList className="flex-col rounded-none bg-transparent p-0 h-full overflow-y-auto">
               {filteredProjects.map((project) => (
                 <TabsTrigger
@@ -76,10 +78,11 @@ export function KanbanView({ teamId, searchQuery, autoSelectedProjectId }: Kanba
               ))}
             </TabsList>
           </div>
+
           <div className="flex-1 h-full">
             {filteredProjects.map((project) => (
               <TabsContent key={project._id} value={`project-${project._id}`} className="h-full">
-                <SubtaskKanbanBoard projectId={project._id} />
+                <KanbanBoard projectId={project._id} />
               </TabsContent>
             ))}
           </div>

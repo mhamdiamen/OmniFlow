@@ -54,39 +54,3 @@ export function formatDate(dateString: string | number): string {
   // Combine into the desired format
   return `${month} ${day}${daySuffix}, ${year}`;
 }
-
-/**
- * Formats seconds into HH:MM:SS time string.
- * @param totalSeconds - Total seconds to format (e.g., 3661)
- * @returns Formatted time string (e.g., "01:01:01")
- */
-export function formatTime(totalSeconds: number): string {
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  
-  return [
-    hours.toString().padStart(2, "0"),
-    minutes.toString().padStart(2, "0"),
-    seconds.toString().padStart(2, "0")
-  ].join(":");
-}
-
-/**
- * Formats seconds into a compact human-readable string.
- * @param totalSeconds - Total seconds to format (e.g., 3661)
- * @returns Compact time string (e.g., "1h 1m" or "61m 1s")
- */
-export function formatTimeShort(totalSeconds: number): string {
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`;
-  } 
-  if (minutes > 0) {
-    return `${minutes}m ${seconds}s`;
-  }
-  return `${seconds}s`;
-}

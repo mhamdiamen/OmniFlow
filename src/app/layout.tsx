@@ -6,8 +6,6 @@ import { ThemeProvider } from "@/components/Themes/theme-provider";
 import { ConvexClientProvider } from "@/components/convex-client-provider";
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 import { EdgeStoreProvider } from "@/lib/edgestore";
-import { TimerProvider } from "@/components/Time/TimerProvider";
-import EnhancedTimeTracker from "@/components/TimeTracker";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,7 +29,8 @@ export default function RootLayout({
 }>) {
   return (
     <ConvexAuthNextjsServerProvider>
-      <EdgeStoreProvider>
+      <EdgeStoreProvider >
+
         <html lang="en" suppressHydrationWarning>
           <body
             className={`${geistSans.variable} ${geistMono.variable} antialiased`}
@@ -44,17 +43,15 @@ export default function RootLayout({
               disableTransitionOnChange
             >
               <ConvexClientProvider>
-                <TimerProvider>
-                  {children}
-                  {/* Enhanced Time Tracker - conditionally visible */}
-                  <EnhancedTimeTracker />
-                </TimerProvider>
+                {children}
               </ConvexClientProvider>
               <Toaster position="bottom-right" />
             </ThemeProvider>
           </body>
+          
         </html>
       </EdgeStoreProvider>
+
     </ConvexAuthNextjsServerProvider>
   );
 }
