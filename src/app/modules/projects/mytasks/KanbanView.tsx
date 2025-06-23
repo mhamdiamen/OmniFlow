@@ -1,7 +1,6 @@
 // components/kanban-view.tsx
 "use client";
 
-import { KanbanBoard } from "./board/KanbanBoard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from 'convex/react';
@@ -10,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Folder, HashIcon } from "lucide-react";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { api } from "../../../../../convex/_generated/api";
+import { SubtaskKanbanBoard } from "./board/SubtaskKanbanBoard";
 
 interface KanbanViewProps {
   teamId: Id<"teams">;
@@ -82,7 +82,7 @@ export function KanbanView({ teamId, searchQuery, autoSelectedProjectId }: Kanba
           <div className="flex-1 h-full">
             {filteredProjects.map((project) => (
               <TabsContent key={project._id} value={`project-${project._id}`} className="h-full">
-                <KanbanBoard projectId={project._id} />
+                <SubtaskKanbanBoard projectId={project._id} />
               </TabsContent>
             ))}
           </div>

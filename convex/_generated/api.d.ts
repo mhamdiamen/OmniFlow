@@ -29,7 +29,6 @@ import type * as mutations_recentActivity from "../mutations/recentActivity.js";
 import type * as mutations_roles from "../mutations/roles.js";
 import type * as mutations_tasks from "../mutations/tasks.js";
 import type * as mutations_teams from "../mutations/teams.js";
-import type * as mutations_timeTracker from "../mutations/timeTracker.js";
 import type * as mutations_users from "../mutations/users.js";
 import type * as queries_comments from "../queries/comments.js";
 import type * as queries_company from "../queries/company.js";
@@ -41,7 +40,6 @@ import type * as queries_recentActivity from "../queries/recentActivity.js";
 import type * as queries_roles from "../queries/roles.js";
 import type * as queries_tasks from "../queries/tasks.js";
 import type * as queries_teams from "../queries/teams.js";
-import type * as queries_timeTracker from "../queries/timeTracker.js";
 import type * as queries_users from "../queries/users.js";
 import type * as users from "../users.js";
 
@@ -70,7 +68,6 @@ declare const fullApi: ApiFromModules<{
   "mutations/roles": typeof mutations_roles;
   "mutations/tasks": typeof mutations_tasks;
   "mutations/teams": typeof mutations_teams;
-  "mutations/timeTracker": typeof mutations_timeTracker;
   "mutations/users": typeof mutations_users;
   "queries/comments": typeof queries_comments;
   "queries/company": typeof queries_company;
@@ -82,7 +79,6 @@ declare const fullApi: ApiFromModules<{
   "queries/roles": typeof queries_roles;
   "queries/tasks": typeof queries_tasks;
   "queries/teams": typeof queries_teams;
-  "queries/timeTracker": typeof queries_timeTracker;
   "queries/users": typeof queries_users;
   users: typeof users;
 }>;

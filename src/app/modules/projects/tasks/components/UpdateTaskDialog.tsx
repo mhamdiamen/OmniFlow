@@ -74,19 +74,27 @@ export function UpdateTaskDialog({
     const [isInitialized, setIsInitialized] = useState(false);
     const lastInputRef = useRef<HTMLInputElement>(null);
 
+    // State for subtasks - now properly typed according to schema
+    const [subtasks, setSubtasks] = useState<
+        Array<{
+            id?: Id<"subtasks">; // For existing subtasks
+            label: string;
+            status: "todo" | "in_progress" | "completed" | "on_hold" | "canceled";
+            position: number;
+        }>
+    >([]);
+
     // Fetch task details
     const task = useQuery(api.queries.tasks.getTaskById, { taskId });
     const updateTask = useMutation(api.mutations.tasks.updateTask);
     const currentUser = useQuery(api.users.CurrentUser, {});
-    const [subtasks, setSubtasks] = useState<
-        Array<{
-            id: string;
-            label: string;
-            completed: boolean;
-            createdAt?: number;
-            completedAt?: number;
-        }>
-    >([]);
+
+    // Fetch subtasks for this task
+    const taskSubtasks = useQuery(
+        api.queries.tasks.fetchSubtasksByTaskId, // You'll need to create this query
+        { taskId }
+    );
+
     // Fetch team members for the task's project
     const teamMembers = useQuery(
         api.queries.teams.fetchTeamMembersByProject,
@@ -131,19 +139,24 @@ export function UpdateTaskDialog({
                 assigneeId: task.assigneeId || "",
                 dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
             });
-
-            // Initialize subtasks from task data
-            const initialSubtasks = task.subtasks?.map(st => ({
-                ...st,
-                createdAt: st.createdAt || Date.now(),
-                completedAt: st.completed ? (st.completedAt || Date.now()) : undefined
-            })) || [];
-
-            setSubtasks(initialSubtasks);
-
             setIsInitialized(true);
         }
     }, [task, isInitialized]);
+
+    // Initialize subtasks from database
+    useEffect(() => {
+        if (taskSubtasks && isInitialized) {
+            const initialSubtasks = taskSubtasks
+                .sort((a: { position: number; }, b: { position: number; }) => a.position - b.position) // Sort by position
+                .map((st: { _id: any; label: any; status: any; position: any; }) => ({
+                    id: st._id,
+                    label: st.label,
+                    status: st.status,
+                    position: st.position,
+                }));
+            setSubtasks(initialSubtasks);
+        }
+    }, [taskSubtasks, isInitialized]);
 
     // Reset initialization when dialog closes
     useEffect(() => {
@@ -175,6 +188,13 @@ export function UpdateTaskDialog({
             return;
         }
 
+        // Validate that subtasks have labels
+        const invalidSubtasks = subtasks.filter(st => !st.label.trim());
+        if (invalidSubtasks.length > 0) {
+            toast.error("All subtasks must have a description");
+            return;
+        }
+
         setLoading(true);
 
         try {
@@ -189,12 +209,12 @@ export function UpdateTaskDialog({
                 status: formState.status,
                 priority: formState.priority,
                 dueDate: dueDateTimestamp,
-                subtasks: subtasks.map(st => ({
-                    ...st,
-                    createdAt: st.createdAt || Date.now(),
-                    completedAt: st.completed ? (st.completedAt || Date.now()) : undefined
-                  })),
-                
+                subtasks: subtasks.map((st, index) => ({
+                    id: st.id, // Will be undefined for new subtasks
+                    label: st.label,
+                    status: st.status,
+                    position: index, // Use array index as position
+                })),
             });
 
             toast.success(`Task "${formState.taskName}" updated successfully!`);
@@ -213,6 +233,40 @@ export function UpdateTaskDialog({
             ...prev,
             [field]: value
         }));
+    };
+
+    // Helper function to toggle subtask completion
+    const toggleSubtaskCompletion = (index: number) => {
+        const updated = [...subtasks];
+        const currentStatus = updated[index].status;
+        updated[index].status = currentStatus === "completed" ? "todo" : "completed";
+        setSubtasks(updated);
+    };
+
+    // Helper function to update subtask label
+    const updateSubtaskLabel = (index: number, label: string) => {
+        const updated = [...subtasks];
+        updated[index].label = label;
+        setSubtasks(updated);
+    };
+
+    // Helper function to remove subtask
+    const removeSubtask = (index: number) => {
+        const updated = [...subtasks];
+        updated.splice(index, 1);
+        setSubtasks(updated);
+    };
+
+    // Helper function to add new subtask
+    const addSubtask = () => {
+        setSubtasks([
+            ...subtasks,
+            { 
+                label: "", 
+                status: "todo", 
+                position: subtasks.length 
+            }
+        ]);
     };
 
     // Modify the onOpenChange handler to close all dropdowns when the sheet is closed
@@ -303,30 +357,28 @@ export function UpdateTaskDialog({
 
                                     {/* List of Subtasks */}
                                     {subtasks.map((subtask, index) => (
-                                        <div key={index} className="flex items-center gap-2">
+                                        <div key={subtask.id || `new-${index}`} className="flex items-center gap-2">
                                             <Input
                                                 value={subtask.label}
-                                                onChange={(e) => {
-                                                    const updated = [...subtasks];
-                                                    updated[index].label = e.target.value;
-                                                    setSubtasks(updated);
-                                                }}
+                                                onChange={(e) => updateSubtaskLabel(index, e.target.value)}
                                                 placeholder="Subtask description"
                                                 className="flex-1"
                                             />
                                             <button
                                                 type="button"
-                                                onClick={() => {
-                                                    const updated = [...subtasks];
-                                                    updated[index].completed = !updated[index].completed;
-                                                    updated[index].completedAt = updated[index].completed ? Date.now() : undefined;
-                                                    setSubtasks(updated);
-                                                }}
-                                                className={`mt-1 flex-shrink-0 ${subtask.completed ? "text-green-500" : "text-muted-foreground hover:text-foreground"
-                                                    }`}
-                                                aria-label={subtask.completed ? "Mark as incomplete" : "Mark as complete"}
+                                                onClick={() => toggleSubtaskCompletion(index)}
+                                                className={`mt-1 flex-shrink-0 ${
+                                                    subtask.status === "completed" 
+                                                        ? "text-green-500" 
+                                                        : "text-muted-foreground hover:text-foreground"
+                                                }`}
+                                                aria-label={
+                                                    subtask.status === "completed" 
+                                                        ? "Mark as incomplete" 
+                                                        : "Mark as complete"
+                                                }
                                             >
-                                                {subtask.completed ? (
+                                                {subtask.status === "completed" ? (
                                                     <CheckCircle2 className="h-5 w-5" />
                                                 ) : (
                                                     <div className="h-5 w-5 border rounded-full"></div>
@@ -336,11 +388,7 @@ export function UpdateTaskDialog({
                                                 type="button"
                                                 variant="outline"
                                                 size="icon"
-                                                onClick={() => {
-                                                    const updated = [...subtasks];
-                                                    updated.splice(index, 1);
-                                                    setSubtasks(updated);
-                                                }}
+                                                onClick={() => removeSubtask(index)}
                                             >
                                                 <Trash size={16} />
                                             </Button>
@@ -352,12 +400,7 @@ export function UpdateTaskDialog({
                                         type="button"
                                         variant="secondary"
                                         className="w-full mt-2"
-                                        onClick={() => {
-                                            setSubtasks([
-                                                ...subtasks,
-                                                { id: window.crypto.randomUUID(), label: "", completed: false }
-                                            ]);
-                                        }}
+                                        onClick={addSubtask}
                                     >
                                         + Add Subtask
                                     </Button>
@@ -393,7 +436,9 @@ export function UpdateTaskDialog({
                                                     !formState.dueDate && "text-muted-foreground"
                                                 )}
                                             >
-                                                <span className={cn("truncate", !formState.dueDate && "text-muted-foreground")}>{formState.dueDate ? format(formState.dueDate, "PPP") : "Pick a date"}</span>
+                                                <span className={cn("truncate", !formState.dueDate && "text-muted-foreground")}>
+                                                    {formState.dueDate ? format(formState.dueDate, "PPP") : "Pick a date"}
+                                                </span>
                                                 <Calendar size={16} className="text-muted-foreground/80 group-hover:text-foreground shrink-0 transition-colors" aria-hidden="true" />
                                             </Button>
                                         </PopoverTrigger>
